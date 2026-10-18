@@ -1,0 +1,280 @@
+{
+  "ready": true,
+  "seed": 7,
+  "epochs": 8,
+  "selection": "The epoch is chosen by balanced accuracy on validation speakers from the training corpus, so neutral and distress count equally. Test speakers are scored once. Distress F1 is also shown, next to the F1 of a classifier that always predicts the larger class.",
+  "iemocap": "IEMOCAP is not in this study. The files require a signed license from USC SAIL and were not downloaded. The third rotation, training on IEMOCAP plus one corpus and testing on the other, is the planned extension once that license is in hand.",
+  "label": {
+    "distress": [
+      "sad",
+      "angry",
+      "fearful"
+    ],
+    "non_distress": [
+      "neutral"
+    ],
+    "excluded": [
+      "calm (RAVDESS only)",
+      "happy",
+      "disgust",
+      "surprise",
+      "frustration (IEMOCAP only, corpus absent)"
+    ]
+  },
+  "text": {
+    "ravdess_sentences": {
+      "Dogs are sitting by the door": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ],
+      "Kids are talking by the door": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ]
+    },
+    "crema_sentences": {
+      "Don't forget a jacket": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ],
+      "I think I have a doctor's appointment": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ],
+      "I think I've seen this before": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ],
+      "I wonder what this is about": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ],
+      "I would like a new alarm clock": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ],
+      "I'm on my way to the meeting": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ],
+      "It's eleven o'clock": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ],
+      "Maybe tomorrow it will be cold": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ],
+      "That is exactly what happened": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ],
+      "The airplane is almost full": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ],
+      "The surface is slick": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ],
+      "We'll stop in a couple of minutes": [
+        "angry",
+        "fearful",
+        "neutral",
+        "sad"
+      ]
+    },
+    "ravdess_sentence_count": 2,
+    "crema_sentence_count": 12,
+    "finding": "RAVDESS contributes 2 fixed sentences, and 2 of them are spoken as both neutral and distress. CREMA-D contributes 12 fixed sentences, and 12 of them are spoken as both neutral and distress. The words do not carry the emotion label, so no text branch was trained on these transcripts. At use time the assistant reads the words separately and the judge combines that reading with the voice score."
+  },
+  "runs": [
+    {
+      "name": "RAVDESS speakers held out",
+      "train_corpus": [
+        "RAVDESS"
+      ],
+      "test_corpus": [
+        "RAVDESS"
+      ],
+      "train_clips": 140,
+      "val_clips": 28,
+      "test_clips": 56,
+      "selected_epoch": 7,
+      "val_balanced_accuracy": 0.9167,
+      "test_loss": 0.4481,
+      "test_accuracy": 0.7321,
+      "test_balanced_accuracy": 0.5833,
+      "test_precision": 0.8837,
+      "test_recall": 0.7917,
+      "test_specificity": 0.375,
+      "test_f1": 0.8352,
+      "majority_f1": 0.9231,
+      "confusion": {
+        "tn": 3,
+        "fp": 5,
+        "fn": 10,
+        "tp": 38
+      },
+      "train_speaker_count": 5,
+      "val_speaker_count": 1,
+      "test_speaker_count": 2
+    },
+    {
+      "name": "CREMA-D speakers held out",
+      "train_corpus": [
+        "CREMA-D"
+      ],
+      "test_corpus": [
+        "CREMA-D"
+      ],
+      "train_clips": 3336,
+      "val_clips": 593,
+      "test_clips": 971,
+      "selected_epoch": 7,
+      "val_balanced_accuracy": 0.7562,
+      "test_loss": 0.5599,
+      "test_accuracy": 0.6571,
+      "test_balanced_accuracy": 0.7232,
+      "test_precision": 0.9308,
+      "test_recall": 0.6045,
+      "test_specificity": 0.8419,
+      "test_f1": 0.733,
+      "majority_f1": 0.8755,
+      "confusion": {
+        "tn": 181,
+        "fp": 34,
+        "fn": 299,
+        "tp": 457
+      },
+      "train_speaker_count": 62,
+      "val_speaker_count": 11,
+      "test_speaker_count": 18
+    },
+    {
+      "name": "Train RAVDESS, test CREMA-D",
+      "train_corpus": [
+        "RAVDESS"
+      ],
+      "test_corpus": [
+        "CREMA-D"
+      ],
+      "train_clips": 196,
+      "val_clips": 28,
+      "test_clips": 4900,
+      "selected_epoch": 8,
+      "val_balanced_accuracy": 0.8958,
+      "test_loss": 0.5831,
+      "test_accuracy": 0.7678,
+      "test_balanced_accuracy": 0.5009,
+      "test_precision": 0.7785,
+      "test_recall": 0.9806,
+      "test_specificity": 0.0212,
+      "test_f1": 0.8679,
+      "majority_f1": 0.8752,
+      "confusion": {
+        "tn": 23,
+        "fp": 1064,
+        "fn": 74,
+        "tp": 3739
+      },
+      "train_speaker_count": 7,
+      "val_speaker_count": 1,
+      "test_speaker_count": 91
+    },
+    {
+      "name": "Train CREMA-D, test RAVDESS",
+      "train_corpus": [
+        "CREMA-D"
+      ],
+      "test_corpus": [
+        "RAVDESS"
+      ],
+      "train_clips": 4307,
+      "val_clips": 593,
+      "test_clips": 224,
+      "selected_epoch": 8,
+      "val_balanced_accuracy": 0.7686,
+      "test_loss": 0.5012,
+      "test_accuracy": 0.817,
+      "test_balanced_accuracy": 0.6068,
+      "test_precision": 0.8872,
+      "test_recall": 0.901,
+      "test_specificity": 0.3125,
+      "test_f1": 0.8941,
+      "majority_f1": 0.9231,
+      "confusion": {
+        "tn": 10,
+        "fp": 22,
+        "fn": 19,
+        "tp": 173
+      },
+      "train_speaker_count": 80,
+      "val_speaker_count": 11,
+      "test_speaker_count": 8
+    }
+  ],
+  "disagreement": {
+    "ready": true,
+    "model": "Monitor audio branch, RAVDESS actors 07\u201308",
+    "distress_line": "I am not feeling well today",
+    "calm_line": "I feel fine",
+    "rule": "The judge is a fixed rule, not a network trained on these transcripts. Distress in the words is kept even when the voice is calm. Distress in the voice is kept even when the words are calm.",
+    "cells": [
+      {
+        "case": "acted distress, words distress",
+        "clips": 16,
+        "heard_distress": 10,
+        "judge_distress": 16,
+        "judge_calm": 0
+      },
+      {
+        "case": "acted distress, words calm",
+        "clips": 16,
+        "heard_distress": 10,
+        "judge_distress": 10,
+        "judge_calm": 6
+      },
+      {
+        "case": "acted calm, words distress",
+        "clips": 16,
+        "heard_distress": 0,
+        "judge_distress": 16,
+        "judge_calm": 0
+      },
+      {
+        "case": "acted calm, words calm",
+        "clips": 16,
+        "heard_distress": 0,
+        "judge_distress": 0,
+        "judge_calm": 16
+      }
+    ]
+  }
+}

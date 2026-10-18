@@ -1,0 +1,11 @@
+backend/.venv/
+data/
+backend/artifacts/*.pt
+backend/artifacts/_upload.wav
+backend/artifacts/train_live.log
+backend/artifacts/train_live.jsonl
+__pycache__/
+*.pyc
+frontend/node_modules/
+frontend/dist/
+.DS_Store

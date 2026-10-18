@@ -1,0 +1,1212 @@
+{
+  "dataset": "RAVDESS speech audio",
+  "citation": "Livingstone & Russo, 2018, PLoS ONE, doi:10.1371/journal.pone.0196391",
+  "seed": 7,
+  "device": "mps",
+  "epochs_ran": 16,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "optimizer": "Adam",
+  "weight_decay": 0.0001,
+  "loss": "BCEWithLogitsLoss",
+  "pos_weight": 0.5,
+  "threshold": 0.5,
+  "augmentation": "Random frequency mask (up to 8 bands) and time mask (up to 16 frames) on the log-mel input.",
+  "label": {
+    "distress": [
+      "sad",
+      "angry",
+      "fearful"
+    ],
+    "calm": [
+      "neutral",
+      "calm"
+    ],
+    "excluded": [
+      "happy",
+      "surprised",
+      "disgust",
+      "song"
+    ]
+  },
+  "split": {
+    "train_actors": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "test_actors": [
+      7,
+      8
+    ],
+    "unused_actors": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24
+    ],
+    "train_clips": 216,
+    "test_clips": 72,
+    "train_distress": 144,
+    "train_calm": 72
+  },
+  "parameters": {
+    "audio": 163041,
+    "vision_untrained": 89408,
+    "fusion_untrained": 4161
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.47267021025930134,
+      "eval_train_loss": 0.6875525883265904,
+      "test_loss": 0.6863428751627604,
+      "train_accuracy": 0.5694444444444444,
+      "test_accuracy": 0.5694444444444444,
+      "test_precision": 0.7428571428571429,
+      "test_recall": 0.5416666666666666,
+      "test_f1": 0.6265060240963857,
+      "grad_norm": {
+        "conv1": 0.07651419576208696,
+        "conv2": 0.15282473501346214,
+        "conv3": 0.20129323274158845,
+        "embed": 1.0705578343144484,
+        "head": 0.44121468492916655
+      },
+      "activation": {
+        "conv1": 0.28644421696662903,
+        "conv2": 0.2088823914527893,
+        "conv3": 0.15765458345413208,
+        "embed": 0.09185059368610382,
+        "head": 0.04706587642431259
+      }
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.4376397899218968,
+      "eval_train_loss": 0.6197833163397652,
+      "test_loss": 0.6003299752871195,
+      "train_accuracy": 0.7407407407407407,
+      "test_accuracy": 0.6944444444444444,
+      "test_precision": 0.703125,
+      "test_recall": 0.9375,
+      "test_f1": 0.8035714285714286,
+      "grad_norm": {
+        "conv1": 0.1022410431028536,
+        "conv2": 0.15111176024104084,
+        "conv3": 0.17948576382991613,
+        "embed": 1.15464954264462,
+        "head": 0.5978442669979164
+      },
+      "activation": {
+        "conv1": 0.35287100076675415,
+        "conv2": 0.30297616124153137,
+        "conv3": 0.298528790473938,
+        "embed": 0.19221162796020508,
+        "head": 0.25935977697372437
+      }
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.39868226647377014,
+      "eval_train_loss": 0.5641993113926479,
+      "test_loss": 0.5519999365011851,
+      "train_accuracy": 0.7777777777777778,
+      "test_accuracy": 0.7361111111111112,
+      "test_precision": 0.7636363636363637,
+      "test_recall": 0.875,
+      "test_f1": 0.8155339805825242,
+      "grad_norm": {
+        "conv1": 0.08393998654914345,
+        "conv2": 0.12565840863369268,
+        "conv3": 0.13019193824786743,
+        "embed": 0.7580508082838995,
+        "head": 0.32566292251327206
+      },
+      "activation": {
+        "conv1": 0.41924184560775757,
+        "conv2": 0.37552106380462646,
+        "conv3": 0.4031517803668976,
+        "embed": 0.26716119050979614,
+        "head": 0.31041643023490906
+      }
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.38186912877219065,
+      "eval_train_loss": 0.47764907138688223,
+      "test_loss": 0.4696944057941437,
+      "train_accuracy": 0.7870370370370371,
+      "test_accuracy": 0.7638888888888888,
+      "test_precision": 0.7818181818181819,
+      "test_recall": 0.8958333333333334,
+      "test_f1": 0.8349514563106797,
+      "grad_norm": {
+        "conv1": 0.24288125611810493,
+        "conv2": 0.31209986706333576,
+        "conv3": 0.23943917247542593,
+        "embed": 1.1579903118046266,
+        "head": 0.5080137243494391
+      },
+      "activation": {
+        "conv1": 0.4782378077507019,
+        "conv2": 0.42917364835739136,
+        "conv3": 0.47983086109161377,
+        "embed": 0.37168848514556885,
+        "head": 0.584839940071106
+      }
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.3459077307156154,
+      "eval_train_loss": 0.4167670692716326,
+      "test_loss": 0.40832948684692383,
+      "train_accuracy": 0.8009259259259259,
+      "test_accuracy": 0.7638888888888888,
+      "test_precision": 0.7719298245614035,
+      "test_recall": 0.9166666666666666,
+      "test_f1": 0.838095238095238,
+      "grad_norm": {
+        "conv1": 0.3486920911894829,
+        "conv2": 0.45170843582861026,
+        "conv3": 0.3285764729588521,
+        "embed": 1.3446499519050121,
+        "head": 0.6313782980931657
+      },
+      "activation": {
+        "conv1": 0.5193845629692078,
+        "conv2": 0.47977346181869507,
+        "conv3": 0.5270432233810425,
+        "embed": 0.43646663427352905,
+        "head": 0.8896130919456482
+      }
+    },
+    {
+      "epoch": 6,
+      "train_loss": 0.3158481057201113,
+      "eval_train_loss": 0.39169278953756603,
+      "test_loss": 0.3781805137793223,
+      "train_accuracy": 0.8240740740740741,
+      "test_accuracy": 0.7777777777777778,
+      "test_precision": 0.8076923076923077,
+      "test_recall": 0.875,
+      "test_f1": 0.8400000000000001,
+      "grad_norm": {
+        "conv1": 0.26894230614631937,
+        "conv2": 0.3518197682124851,
+        "conv3": 0.2596160717786956,
+        "embed": 0.9944854198422816,
+        "head": 0.43870010586189373
+      },
+      "activation": {
+        "conv1": 0.5433194041252136,
+        "conv2": 0.536350667476654,
+        "conv3": 0.5330056548118591,
+        "embed": 0.5001330971717834,
+        "head": 0.9689162969589233
+      }
+    },
+    {
+      "epoch": 7,
+      "train_loss": 0.31484024439539227,
+      "eval_train_loss": 0.40546797854559763,
+      "test_loss": 0.41288625200589496,
+      "train_accuracy": 0.8055555555555556,
+      "test_accuracy": 0.75,
+      "test_precision": 0.96875,
+      "test_recall": 0.6458333333333334,
+      "test_f1": 0.775,
+      "grad_norm": {
+        "conv1": 0.42025364717804187,
+        "conv2": 0.5518109147509295,
+        "conv3": 0.406768987389634,
+        "embed": 1.4435420114813107,
+        "head": 0.6003523913345167
+      },
+      "activation": {
+        "conv1": 0.5586587190628052,
+        "conv2": 0.5515550374984741,
+        "conv3": 0.5598053336143494,
+        "embed": 0.5576387643814087,
+        "head": 1.105649709701538
+      }
+    },
+    {
+      "epoch": 8,
+      "train_loss": 0.27126041267599377,
+      "eval_train_loss": 0.3717925080231258,
+      "test_loss": 0.37527166803677875,
+      "train_accuracy": 0.8333333333333334,
+      "test_accuracy": 0.7916666666666666,
+      "test_precision": 0.9714285714285714,
+      "test_recall": 0.7083333333333334,
+      "test_f1": 0.8192771084337349,
+      "grad_norm": {
+        "conv1": 0.3700125979491986,
+        "conv2": 0.5020511221863467,
+        "conv3": 0.3668081529991961,
+        "embed": 1.083882971134569,
+        "head": 0.4242054853322251
+      },
+      "activation": {
+        "conv1": 0.5670788288116455,
+        "conv2": 0.5797581672668457,
+        "conv3": 0.590269923210144,
+        "embed": 0.6002523899078369,
+        "head": 1.2206283807754517
+      }
+    },
+    {
+      "epoch": 9,
+      "train_loss": 0.2862791823489325,
+      "eval_train_loss": 0.3097545823880604,
+      "test_loss": 0.2923597879707813,
+      "train_accuracy": 0.8703703703703703,
+      "test_accuracy": 0.7916666666666666,
+      "test_precision": 0.8113207547169812,
+      "test_recall": 0.8958333333333334,
+      "test_f1": 0.8514851485148515,
+      "grad_norm": {
+        "conv1": 0.6493828227956726,
+        "conv2": 0.9264392998744588,
+        "conv3": 0.6416704434417342,
+        "embed": 1.6284547448158264,
+        "head": 0.691244242180671
+      },
+      "activation": {
+        "conv1": 0.5726317167282104,
+        "conv2": 0.5806049108505249,
+        "conv3": 0.6145025491714478,
+        "embed": 0.6192547082901001,
+        "head": 1.6024936437606812
+      }
+    },
+    {
+      "epoch": 10,
+      "train_loss": 0.2849532642534801,
+      "eval_train_loss": 0.29431527640138355,
+      "test_loss": 0.2979856766760349,
+      "train_accuracy": 0.8611111111111112,
+      "test_accuracy": 0.8055555555555556,
+      "test_precision": 0.8695652173913043,
+      "test_recall": 0.8333333333333334,
+      "test_f1": 0.851063829787234,
+      "grad_norm": {
+        "conv1": 0.6946935862300297,
+        "conv2": 0.993262202192134,
+        "conv3": 0.6729276992413926,
+        "embed": 1.7945338947964566,
+        "head": 0.8170995331768479
+      },
+      "activation": {
+        "conv1": 0.5755528211593628,
+        "conv2": 0.5832954049110413,
+        "conv3": 0.6000926494598389,
+        "embed": 0.5885236859321594,
+        "head": 1.6324070692062378
+      }
+    },
+    {
+      "epoch": 11,
+      "train_loss": 0.3006044030189514,
+      "eval_train_loss": 0.43658585633550373,
+      "test_loss": 0.5278621117273966,
+      "train_accuracy": 0.7824074074074074,
+      "test_accuracy": 0.6527777777777778,
+      "test_precision": 1.0,
+      "test_recall": 0.4791666666666667,
+      "test_f1": 0.647887323943662,
+      "grad_norm": {
+        "conv1": 0.6852607641437203,
+        "conv2": 0.9980939851580255,
+        "conv3": 0.7017934860976683,
+        "embed": 1.9400025648730141,
+        "head": 0.8438642386879239
+      },
+      "activation": {
+        "conv1": 0.5763789415359497,
+        "conv2": 0.6493737101554871,
+        "conv3": 0.701061487197876,
+        "embed": 0.5556132197380066,
+        "head": 1.5453903675079346
+      }
+    },
+    {
+      "epoch": 12,
+      "train_loss": 0.27964378680501667,
+      "eval_train_loss": 0.30415623635053635,
+      "test_loss": 0.29359694197773933,
+      "train_accuracy": 0.8518518518518519,
+      "test_accuracy": 0.7916666666666666,
+      "test_precision": 0.8,
+      "test_recall": 0.9166666666666666,
+      "test_f1": 0.854368932038835,
+      "grad_norm": {
+        "conv1": 0.6161632595747827,
+        "conv2": 0.7030481476372711,
+        "conv3": 0.4440456563964081,
+        "embed": 1.274448330514133,
+        "head": 0.5719739800052983
+      },
+      "activation": {
+        "conv1": 0.5809215307235718,
+        "conv2": 0.6609023809432983,
+        "conv3": 0.7023842930793762,
+        "embed": 0.5416477918624878,
+        "head": 1.743417739868164
+      }
+    },
+    {
+      "epoch": 13,
+      "train_loss": 0.24019785864012583,
+      "eval_train_loss": 0.32877799017088755,
+      "test_loss": 0.35639171302318573,
+      "train_accuracy": 0.8657407407407407,
+      "test_accuracy": 0.8055555555555556,
+      "test_precision": 0.9722222222222222,
+      "test_recall": 0.7291666666666666,
+      "test_f1": 0.8333333333333333,
+      "grad_norm": {
+        "conv1": 0.43345844200247413,
+        "conv2": 0.499582085778203,
+        "conv3": 0.30241415192291143,
+        "embed": 0.7976767817246062,
+        "head": 0.3140502643904516
+      },
+      "activation": {
+        "conv1": 0.5796374082565308,
+        "conv2": 0.6142398715019226,
+        "conv3": 0.6274107694625854,
+        "embed": 0.4565673768520355,
+        "head": 1.4261351823806763
+      }
+    },
+    {
+      "epoch": 14,
+      "train_loss": 0.22261615097522736,
+      "eval_train_loss": 0.34535778633185793,
+      "test_loss": 0.406733438372612,
+      "train_accuracy": 0.8564814814814815,
+      "test_accuracy": 0.7638888888888888,
+      "test_precision": 1.0,
+      "test_recall": 0.6458333333333334,
+      "test_f1": 0.7848101265822784,
+      "grad_norm": {
+        "conv1": 0.4031553382478071,
+        "conv2": 0.6414966156247209,
+        "conv3": 0.4110097517366115,
+        "embed": 1.0418299256957002,
+        "head": 0.4196333241249834
+      },
+      "activation": {
+        "conv1": 0.5772686004638672,
+        "conv2": 0.5709671974182129,
+        "conv3": 0.584516167640686,
+        "embed": 0.4928854703903198,
+        "head": 1.5491743087768555
+      }
+    },
+    {
+      "epoch": 15,
+      "train_loss": 0.23214472191674368,
+      "eval_train_loss": 0.23469096635069167,
+      "test_loss": 0.23187879348794618,
+      "train_accuracy": 0.9027777777777778,
+      "test_accuracy": 0.875,
+      "test_precision": 0.9534883720930233,
+      "test_recall": 0.8541666666666666,
+      "test_f1": 0.9010989010989011,
+      "grad_norm": {
+        "conv1": 0.8293806917778908,
+        "conv2": 1.108263336518645,
+        "conv3": 0.5807425856252033,
+        "embed": 1.2799543172254093,
+        "head": 0.49240092035116895
+      },
+      "activation": {
+        "conv1": 0.5761192440986633,
+        "conv2": 0.5679388046264648,
+        "conv3": 0.5805845260620117,
+        "embed": 0.5798688530921936,
+        "head": 2.0208053588867188
+      }
+    },
+    {
+      "epoch": 16,
+      "train_loss": 0.1892503723502159,
+      "eval_train_loss": 0.3257621100970677,
+      "test_loss": 0.40618757903575897,
+      "train_accuracy": 0.8333333333333334,
+      "test_accuracy": 0.7361111111111112,
+      "test_precision": 1.0,
+      "test_recall": 0.6041666666666666,
+      "test_f1": 0.7532467532467533,
+      "grad_norm": {
+        "conv1": 0.5233184387047574,
+        "conv2": 0.7838200491396214,
+        "conv3": 0.4226418200876627,
+        "embed": 0.8116799000251506,
+        "head": 0.27343270355569466
+      },
+      "activation": {
+        "conv1": 0.5782753825187683,
+        "conv2": 0.5477008819580078,
+        "conv3": 0.5878874063491821,
+        "embed": 0.6337890028953552,
+        "head": 2.0354056358337402
+      }
+    }
+  ],
+  "best": {
+    "epoch": 15,
+    "f1": 0.9010989010989011,
+    "accuracy": 0.875,
+    "precision": 0.9534883720930233,
+    "recall": 0.8541666666666666,
+    "loss": 0.23187879348794618
+  },
+  "confusion": {
+    "tn": 22,
+    "fp": 2,
+    "fn": 7,
+    "tp": 41
+  },
+  "predictions": [
+    {
+      "file": "Actor_07/03-01-01-01-01-01-07.wav",
+      "actor": 7,
+      "emotion": "neutral",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.1115,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-01-01-01-02-07.wav",
+      "actor": 7,
+      "emotion": "neutral",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.1619,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-01-01-02-01-07.wav",
+      "actor": 7,
+      "emotion": "neutral",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.1879,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-01-01-02-02-07.wav",
+      "actor": 7,
+      "emotion": "neutral",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.2376,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-02-01-01-01-07.wav",
+      "actor": 7,
+      "emotion": "calm",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.1795,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-02-01-01-02-07.wav",
+      "actor": 7,
+      "emotion": "calm",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.0927,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-02-01-02-01-07.wav",
+      "actor": 7,
+      "emotion": "calm",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.1668,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-02-01-02-02-07.wav",
+      "actor": 7,
+      "emotion": "calm",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.2699,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-02-02-01-01-07.wav",
+      "actor": 7,
+      "emotion": "calm",
+      "intensity": "strong",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.0452,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-02-02-01-02-07.wav",
+      "actor": 7,
+      "emotion": "calm",
+      "intensity": "strong",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.0722,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-02-02-02-01-07.wav",
+      "actor": 7,
+      "emotion": "calm",
+      "intensity": "strong",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.0521,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-02-02-02-02-07.wav",
+      "actor": 7,
+      "emotion": "calm",
+      "intensity": "strong",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.0439,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-04-01-01-01-07.wav",
+      "actor": 7,
+      "emotion": "sad",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "calm",
+      "probability": 0.2135,
+      "correct": false
+    },
+    {
+      "file": "Actor_07/03-01-04-01-01-02-07.wav",
+      "actor": 7,
+      "emotion": "sad",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "calm",
+      "probability": 0.247,
+      "correct": false
+    },
+    {
+      "file": "Actor_07/03-01-04-01-02-01-07.wav",
+      "actor": 7,
+      "emotion": "sad",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "calm",
+      "probability": 0.1993,
+      "correct": false
+    },
+    {
+      "file": "Actor_07/03-01-04-01-02-02-07.wav",
+      "actor": 7,
+      "emotion": "sad",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.7574,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-04-02-01-01-07.wav",
+      "actor": 7,
+      "emotion": "sad",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9449,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-04-02-01-02-07.wav",
+      "actor": 7,
+      "emotion": "sad",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.6075,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-04-02-02-01-07.wav",
+      "actor": 7,
+      "emotion": "sad",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9458,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-04-02-02-02-07.wav",
+      "actor": 7,
+      "emotion": "sad",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.8657,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-05-01-01-01-07.wav",
+      "actor": 7,
+      "emotion": "angry",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.7668,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-05-01-01-02-07.wav",
+      "actor": 7,
+      "emotion": "angry",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9558,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-05-01-02-01-07.wav",
+      "actor": 7,
+      "emotion": "angry",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "calm",
+      "probability": 0.3717,
+      "correct": false
+    },
+    {
+      "file": "Actor_07/03-01-05-01-02-02-07.wav",
+      "actor": 7,
+      "emotion": "angry",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "calm",
+      "probability": 0.4336,
+      "correct": false
+    },
+    {
+      "file": "Actor_07/03-01-05-02-01-01-07.wav",
+      "actor": 7,
+      "emotion": "angry",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9742,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-05-02-01-02-07.wav",
+      "actor": 7,
+      "emotion": "angry",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9932,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-05-02-02-01-07.wav",
+      "actor": 7,
+      "emotion": "angry",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9951,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-05-02-02-02-07.wav",
+      "actor": 7,
+      "emotion": "angry",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9966,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-06-01-01-01-07.wav",
+      "actor": 7,
+      "emotion": "fearful",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.8671,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-06-01-01-02-07.wav",
+      "actor": 7,
+      "emotion": "fearful",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.8414,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-06-01-02-01-07.wav",
+      "actor": 7,
+      "emotion": "fearful",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.6082,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-06-01-02-02-07.wav",
+      "actor": 7,
+      "emotion": "fearful",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.7178,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-06-02-01-01-07.wav",
+      "actor": 7,
+      "emotion": "fearful",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9957,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-06-02-01-02-07.wav",
+      "actor": 7,
+      "emotion": "fearful",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9944,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-06-02-02-01-07.wav",
+      "actor": 7,
+      "emotion": "fearful",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9686,
+      "correct": true
+    },
+    {
+      "file": "Actor_07/03-01-06-02-02-02-07.wav",
+      "actor": 7,
+      "emotion": "fearful",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9927,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-01-01-01-01-08.wav",
+      "actor": 8,
+      "emotion": "neutral",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "distress",
+      "probability": 0.5855,
+      "correct": false
+    },
+    {
+      "file": "Actor_08/03-01-01-01-01-02-08.wav",
+      "actor": 8,
+      "emotion": "neutral",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.4133,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-01-01-02-01-08.wav",
+      "actor": 8,
+      "emotion": "neutral",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.4927,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-01-01-02-02-08.wav",
+      "actor": 8,
+      "emotion": "neutral",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.3288,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-02-01-01-01-08.wav",
+      "actor": 8,
+      "emotion": "calm",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.2479,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-02-01-01-02-08.wav",
+      "actor": 8,
+      "emotion": "calm",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "distress",
+      "probability": 0.5281,
+      "correct": false
+    },
+    {
+      "file": "Actor_08/03-01-02-01-02-01-08.wav",
+      "actor": 8,
+      "emotion": "calm",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.4499,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-02-01-02-02-08.wav",
+      "actor": 8,
+      "emotion": "calm",
+      "intensity": "normal",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.3569,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-02-02-01-01-08.wav",
+      "actor": 8,
+      "emotion": "calm",
+      "intensity": "strong",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.2976,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-02-02-01-02-08.wav",
+      "actor": 8,
+      "emotion": "calm",
+      "intensity": "strong",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.2227,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-02-02-02-01-08.wav",
+      "actor": 8,
+      "emotion": "calm",
+      "intensity": "strong",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.0957,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-02-02-02-02-08.wav",
+      "actor": 8,
+      "emotion": "calm",
+      "intensity": "strong",
+      "truth": "calm",
+      "predicted": "calm",
+      "probability": 0.1068,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-04-01-01-01-08.wav",
+      "actor": 8,
+      "emotion": "sad",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.5274,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-04-01-01-02-08.wav",
+      "actor": 8,
+      "emotion": "sad",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "calm",
+      "probability": 0.1861,
+      "correct": false
+    },
+    {
+      "file": "Actor_08/03-01-04-01-02-01-08.wav",
+      "actor": 8,
+      "emotion": "sad",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.6084,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-04-01-02-02-08.wav",
+      "actor": 8,
+      "emotion": "sad",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "calm",
+      "probability": 0.3037,
+      "correct": false
+    },
+    {
+      "file": "Actor_08/03-01-04-02-01-01-08.wav",
+      "actor": 8,
+      "emotion": "sad",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9188,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-04-02-01-02-08.wav",
+      "actor": 8,
+      "emotion": "sad",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9608,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-04-02-02-01-08.wav",
+      "actor": 8,
+      "emotion": "sad",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.8943,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-04-02-02-02-08.wav",
+      "actor": 8,
+      "emotion": "sad",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9776,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-05-01-01-01-08.wav",
+      "actor": 8,
+      "emotion": "angry",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9421,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-05-01-01-02-08.wav",
+      "actor": 8,
+      "emotion": "angry",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.884,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-05-01-02-01-08.wav",
+      "actor": 8,
+      "emotion": "angry",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.5326,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-05-01-02-02-08.wav",
+      "actor": 8,
+      "emotion": "angry",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.6708,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-05-02-01-01-08.wav",
+      "actor": 8,
+      "emotion": "angry",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9862,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-05-02-01-02-08.wav",
+      "actor": 8,
+      "emotion": "angry",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9969,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-05-02-02-01-08.wav",
+      "actor": 8,
+      "emotion": "angry",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9751,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-05-02-02-02-08.wav",
+      "actor": 8,
+      "emotion": "angry",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9915,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-06-01-01-01-08.wav",
+      "actor": 8,
+      "emotion": "fearful",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9949,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-06-01-01-02-08.wav",
+      "actor": 8,
+      "emotion": "fearful",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9491,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-06-01-02-01-08.wav",
+      "actor": 8,
+      "emotion": "fearful",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9447,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-06-01-02-02-08.wav",
+      "actor": 8,
+      "emotion": "fearful",
+      "intensity": "normal",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9839,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-06-02-01-01-08.wav",
+      "actor": 8,
+      "emotion": "fearful",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9954,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-06-02-01-02-08.wav",
+      "actor": 8,
+      "emotion": "fearful",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9957,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-06-02-02-01-08.wav",
+      "actor": 8,
+      "emotion": "fearful",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9958,
+      "correct": true
+    },
+    {
+      "file": "Actor_08/03-01-06-02-02-02-08.wav",
+      "actor": 8,
+      "emotion": "fearful",
+      "intensity": "strong",
+      "truth": "distress",
+      "predicted": "distress",
+      "probability": 0.9939,
+      "correct": true
+    }
+  ],
+  "narrative": "The audio branch trained for 16 epochs on 216 speech clips from actors 01\u201306. Actors 07 and 08 were held out (72 clips) and never appeared in the weight updates. The best test F1 was 0.90 at epoch 15, with accuracy 0.88, precision 0.95, and recall 0.85. Distress was the positive class: sad, angry, and fearful. Calm was neutral and calm speech. Happy, surprise, and disgust were left out of the loss. Vision and fusion are drawn in the network view and were not trained in this run."
+}
