@@ -28,8 +28,12 @@ EMOTION_NAMES = {
     SURPRISED: "surprised",
 }
 
-TRAIN_ACTORS = set(range(1, 7))
-TEST_ACTORS = {7, 8}
+# All 24 actors, the same split as the Colab run: 18 train, 2 validation
+# (checkpoint choice), 4 test. Odd actors are male and even actors female.
+ALL_ACTORS = set(range(1, 25))
+TRAIN_ACTORS = set(range(1, 19))
+VAL_ACTORS = {19, 20}
+TEST_ACTORS = {21, 22, 23, 24}
 
 
 @dataclass(frozen=True)
@@ -48,6 +52,8 @@ class Clip:
     def split(self) -> str:
         if self.actor in TRAIN_ACTORS:
             return "train"
+        if self.actor in VAL_ACTORS:
+            return "val"
         if self.actor in TEST_ACTORS:
             return "test"
         return "unused"

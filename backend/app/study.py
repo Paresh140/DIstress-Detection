@@ -17,6 +17,7 @@ import torch
 
 from .audio import file_to_logmel
 from .corpora import discover, sentence_coverage
+from .dataset import TEST_ACTORS
 from .dataset import discover as discover_demo
 from .judge import decide
 from .language import read_language
@@ -77,7 +78,7 @@ def _run(name: str, train_clips: list, val_clips: list, test_clips: list, cache:
         "val_clips": len(val_clips),
         "test_clips": len(test_clips),
         "selected_epoch": fitted["epoch"],
-        "val_balanced_accuracy": round(fitted["val_f1"], 4),
+        "val_balanced_accuracy": round(fitted["val_balanced_accuracy"], 4),
         "test_loss": round(scored["loss"], 4),
         "test_accuracy": round(scored["accuracy"], 4),
         "test_balanced_accuracy": round(scored["balanced_accuracy"], 4),
@@ -113,7 +114,7 @@ def _disagreement(ravdess_demo: list) -> dict:
     """Pair real held-out voices with text we assign, including conflicts."""
     if not WEIGHTS.exists():
         return {"ready": False, "note": "The Monitor audio weights are not saved, so the disagreement check was skipped."}
-    held = [clip for clip in ravdess_demo if clip.actor in {7, 8}]
+    held = [clip for clip in ravdess_demo if clip.actor in TEST_ACTORS]
     distress = [clip for clip in held if clip.label == 1][:16]
     calm = [clip for clip in held if clip.label == 0][:16]
     dev = device()
@@ -157,7 +158,7 @@ def _disagreement(ravdess_demo: list) -> dict:
         )
     return {
         "ready": True,
-        "model": "Monitor audio branch, RAVDESS actors 07–08",
+        "model": "Monitor audio branch, RAVDESS test actors 21–24",
         "distress_line": DISTRESS_LINE,
         "calm_line": CALM_LINE,
         "rule": (
@@ -257,9 +258,8 @@ def run() -> dict:
         ),
         "label": {
             "distress": ["sad", "angry", "fearful"],
-            "non_distress": ["neutral"],
+            "non_distress": ["neutral", "calm (RAVDESS only)"],
             "excluded": [
-                "calm (RAVDESS only)",
                 "happy",
                 "disgust",
                 "surprise",

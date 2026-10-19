@@ -4,10 +4,9 @@ IEMOCAP is not loaded. It is released under a signed USC SAIL license and is
 not in this workspace. The audio study therefore uses the planned fallback:
 RAVDESS and CREMA-D, in both directions.
 
-The shared label keeps only emotions that exist in both corpora.
-Calm is RAVDESS-only, so it is not part of this map. Happy, disgust, and
-surprise are excluded. The Monitor demo still uses the earlier RAVDESS map,
-which treats calm as the negative class.
+Distress is sad, angry or fearful. Non-distress is neutral or calm, the same
+map the Monitor demo and the Colab run use. Calm only occurs in RAVDESS.
+Happy, disgust, and surprise are excluded.
 """
 
 from __future__ import annotations
@@ -37,7 +36,7 @@ CREMA_SENTENCES = {
 
 # Names shared by both corpora.
 DISTRESS = {"sad", "angry", "fearful"}
-NON_DISTRESS = {"neutral"}
+NON_DISTRESS = {"neutral", "calm"}
 
 RAVDESS_EMOTION = {
     1: "neutral",
