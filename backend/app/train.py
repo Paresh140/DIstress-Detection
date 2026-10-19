@@ -1,4 +1,10 @@
-"""Train the DistressNet audio branch on RAVDESS actors 01–08."""
+"""Train the DistressNet audio branch on all 24 RAVDESS actors.
+
+Actors 01–18 train, 19–20 choose the checkpoint, 21–24 are the test set,
+the same split as colab/distressnet_colab.py.
+The test actors are logged each epoch for the studio curves but never decide
+which epoch is kept.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +18,7 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from .audio import file_to_logmel
-from .dataset import TEST_ACTORS, TRAIN_ACTORS, discover
+from .dataset import TEST_ACTORS, TRAIN_ACTORS, VAL_ACTORS, discover
 from .model import DistressNet, count_params
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -70,10 +76,13 @@ def _binary_metrics(truth: np.ndarray, pred: np.ndarray) -> dict:
     recall = tp / (tp + fn) if tp + fn else 0.0
     specificity = tn / (tn + fp) if tn + fp else 0.0
     f1 = (2 * precision * recall / (precision + recall)) if precision + recall else 0.0
+    neg_precision = tn / (tn + fn) if tn + fn else 0.0
+    neg_f1 = (2 * neg_precision * specificity / (neg_precision + specificity)) if neg_precision + specificity else 0.0
     acc = (tp + tn) / max(len(truth), 1)
     return {
         "accuracy": acc,
         "balanced_accuracy": 0.5 * (recall + specificity),
+        "macro_f1": 0.5 * (f1 + neg_f1),
         "precision": precision,
         "recall": recall,
         "specificity": specificity,
@@ -83,6 +92,34 @@ def _binary_metrics(truth: np.ndarray, pred: np.ndarray) -> dict:
         "fp": fp,
         "fn": fn,
     }
+
+
+def auroc(truth: np.ndarray, prob: np.ndarray) -> float | None:
+    """Area under the ROC curve from ranks (Mann–Whitney U), ties averaged."""
+    truth = np.asarray(truth).astype(np.int64)
+    prob = np.asarray(prob, dtype=np.float64)
+    n_pos = int(truth.sum())
+    n_neg = len(truth) - n_pos
+    if n_pos == 0 or n_neg == 0:
+        return None
+    order = np.argsort(prob, kind="mergesort")
+    ranks = np.empty(len(prob), dtype=np.float64)
+    sorted_prob = prob[order]
+    start = 0
+    while start < len(prob):
+        end = start
+        while end + 1 < len(prob) and sorted_prob[end + 1] == sorted_prob[start]:
+            end += 1
+        ranks[order[start : end + 1]] = 0.5 * (start + end) + 1
+        start = end + 1
+    return float((ranks[truth == 1].sum() - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg))
+
+
+def always_distress_f1(truth: np.ndarray) -> float:
+    """F1 of a classifier that calls every clip distress."""
+    truth = np.asarray(truth, dtype=np.float64)
+    share = float(truth.mean()) if len(truth) else 0.0
+    return 2 * share / (share + 1) if share else 0.0
 
 
 def _group_grad(model: nn.Module) -> dict[str, float]:
@@ -135,6 +172,7 @@ def _evaluate(model: DistressNet, loader: DataLoader, dev: torch.device) -> tupl
     prob = np.concatenate(probs)
     pred = (prob >= 0.5).astype(np.int64)
     metrics = _binary_metrics(truth.astype(np.int64), pred)
+    metrics["auroc"] = auroc(truth, prob)
     model.train()
     return float(np.mean(losses)), metrics, truth, prob
 
@@ -153,11 +191,13 @@ def _narrative(report: dict) -> str:
     split = report["split"]
     return (
         f"The audio branch trained for {report['epochs_ran']} epochs on {split['train_clips']} "
-        f"speech clips from actors {_span(split['train_actors'])}. Actors {_span(split['test_actors'])} were held out "
-        f"({split['test_clips']} clips) and never appeared in the weight updates. "
-        f"The best test F1 was {best['f1']:.2f} at epoch {best['epoch']}, "
-        f"with accuracy {best['accuracy']:.2f}, precision {best['precision']:.2f}, "
-        f"and recall {best['recall']:.2f}. "
+        f"speech clips from actors {_span(split['train_actors'])}. "
+        f"Epoch {best['epoch']} was kept because it had the best balanced accuracy on validation actors "
+        f"{_span(split['val_actors'])} ({best['val_balanced_accuracy']:.2f}). "
+        f"Test actors {_span(split['test_actors'])} ({split['test_clips']} clips) did not take part in that choice. "
+        f"On them the kept epoch had F1 {best['f1']:.2f}, balanced accuracy {best['balanced_accuracy']:.2f}, "
+        f"specificity {best['specificity']:.2f} and recall {best['recall']:.2f}. "
+        f"A model that calls every clip distress would get F1 {report['baseline']['always_distress_f1']:.2f}. "
         f"Distress was the positive class: sad, angry, and fearful. "
         f"Calm was neutral and calm speech. Happy, surprise, and disgust were left out of the loss. "
         f"Vision and fusion are drawn in the network view and were not trained in this run."
@@ -185,7 +225,7 @@ def fit_audio(train_rows: list[dict], val_rows: list[dict], epochs: int = 8) -> 
     eval_train = DataLoader(MelSet(train_rows, train=False), batch_size=BATCH)
     eval_val = DataLoader(MelSet(val_rows, train=False), batch_size=BATCH)
     history = []
-    best = {"f1": -1.0, "state": None, "epoch": 0}
+    best = {"score": -1.0, "val_loss": float("inf"), "state": None, "epoch": 0}
 
     for epoch in range(1, epochs + 1):
         model.train()
@@ -216,9 +256,11 @@ def fit_audio(train_rows: list[dict], val_rows: list[dict], epochs: int = 8) -> 
             f"  epoch {epoch:02d}  train {history[-1]['train_loss']:.3f}  "
             f"val {val_loss:.3f}  val bal {val_metrics['balanced_accuracy']:.3f}"
         )
-        if val_metrics["balanced_accuracy"] > best["f1"]:
+        # Ties on balanced accuracy go to the lower validation loss.
+        if (val_metrics["balanced_accuracy"], -val_loss) > (best["score"], -best["val_loss"]):
             best = {
-                "f1": val_metrics["balanced_accuracy"],
+                "score": val_metrics["balanced_accuracy"],
+                "val_loss": val_loss,
                 "epoch": epoch,
                 "state": {k: v.detach().cpu().clone() for k, v in model.audio.state_dict().items()},
             }
@@ -226,7 +268,7 @@ def fit_audio(train_rows: list[dict], val_rows: list[dict], epochs: int = 8) -> 
     return {
         "state": best["state"],
         "epoch": best["epoch"],
-        "val_f1": best["f1"],
+        "val_balanced_accuracy": best["score"],
         "history": history,
         "pos_weight": float(pos_weight),
         "device": str(dev),
@@ -269,7 +311,11 @@ def train(progress: Path | None = None) -> dict:
         )
 
     train_rows = [row for row in rows if row["clip"].split == "train"]
+    val_rows = [row for row in rows if row["clip"].split == "val"]
     test_rows = [row for row in rows if row["clip"].split == "test"]
+    if not train_rows or not val_rows or not test_rows:
+        found = sorted({row["clip"].actor for row in rows})
+        raise SystemExit(f"Need train, validation and test actors under {DATA_ROOT}; found actors {found}")
     n_pos = sum(row["label"] for row in train_rows)
     n_neg = len(train_rows) - n_pos
     pos_weight = torch.tensor([n_neg / max(n_pos, 1)], dtype=torch.float32)
@@ -286,11 +332,12 @@ def train(progress: Path | None = None) -> dict:
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight.to(dev))
     train_loader = DataLoader(MelSet(train_rows, train=True), batch_size=BATCH, shuffle=True)
     eval_train = DataLoader(MelSet(train_rows, train=False), batch_size=BATCH)
+    eval_val = DataLoader(MelSet(val_rows, train=False), batch_size=BATCH)
     eval_test = DataLoader(MelSet(test_rows, train=False), batch_size=BATCH)
 
     probe_x = torch.stack([row["mel"] for row in train_rows[:BATCH]]).unsqueeze(1)
     history = []
-    best = {"f1": -1.0, "state": None, "epoch": 0}
+    best = {"score": -1.0, "val_loss": float("inf"), "state": None, "epoch": 0}
 
     for epoch in range(1, EPOCHS + 1):
         model.train()
@@ -312,12 +359,16 @@ def train(progress: Path | None = None) -> dict:
             steps += 1
 
         train_loss, train_metrics, _, _ = _evaluate(model, eval_train, dev)
+        val_loss, val_metrics, _, _ = _evaluate(model, eval_val, dev)
         test_loss, test_metrics, _, _ = _evaluate(model, eval_test, dev)
         activations = _activation_means(model, probe_x, dev)
         row = {
             "epoch": epoch,
             "train_loss": sum(losses) / max(len(losses), 1),
             "eval_train_loss": train_loss,
+            "val_loss": val_loss,
+            "val_f1": val_metrics["f1"],
+            "val_balanced_accuracy": val_metrics["balanced_accuracy"],
             "test_loss": test_loss,
             "train_accuracy": train_metrics["accuracy"],
             "test_accuracy": test_metrics["accuracy"],
@@ -330,10 +381,14 @@ def train(progress: Path | None = None) -> dict:
         history.append(row)
         print(
             f"epoch {epoch:02d}  train {row['train_loss']:.3f}  "
-            f"test {test_loss:.3f}  acc {test_metrics['accuracy']:.3f}  f1 {test_metrics['f1']:.3f}"
+            f"val bal {val_metrics['balanced_accuracy']:.3f}  test f1 {test_metrics['f1']:.3f}"
         )
-        if test_metrics["f1"] > best["f1"]:
+        # The checkpoint is chosen on validation actors only.
+        # Ties on balanced accuracy go to the lower validation loss.
+        if (val_metrics["balanced_accuracy"], -val_loss) > (best["score"], -best["val_loss"]):
             best = {
+                "score": val_metrics["balanced_accuracy"],
+                "val_loss": val_loss,
                 "f1": test_metrics["f1"],
                 "epoch": epoch,
                 "accuracy": test_metrics["accuracy"],
@@ -361,6 +416,7 @@ def train(progress: Path | None = None) -> dict:
     model.load_state_dict(best["state"])
     model.to(dev)
     _, final_metrics, truth, prob = _evaluate(model, eval_test, dev)
+    _, val_final, _, _ = _evaluate(model, eval_val, dev)
     pred = (prob >= 0.5).astype(np.int64)
 
     predictions = []
@@ -400,11 +456,14 @@ def train(progress: Path | None = None) -> dict:
             "calm": ["neutral", "calm"],
             "excluded": ["happy", "surprised", "disgust", "song"],
         },
+        "selection": "Epoch with the best balanced accuracy on the validation actors. Test actors are shown per epoch but never used to choose.",
         "split": {
             "train_actors": sorted(TRAIN_ACTORS),
+            "val_actors": sorted(VAL_ACTORS),
             "test_actors": sorted(TEST_ACTORS),
-            "unused_actors": list(range(9, 25)),
+            "unused_actors": [],
             "train_clips": len(train_rows),
+            "val_clips": len(val_rows),
             "test_clips": len(test_rows),
             "train_distress": int(n_pos),
             "train_calm": int(n_neg),
@@ -422,7 +481,13 @@ def train(progress: Path | None = None) -> dict:
             "precision": best_row["test_precision"],
             "recall": best_row["test_recall"],
             "loss": best_row["test_loss"],
+            "balanced_accuracy": final_metrics["balanced_accuracy"],
+            "macro_f1": final_metrics["macro_f1"],
+            "specificity": final_metrics["specificity"],
+            "auroc": final_metrics["auroc"],
+            "val_balanced_accuracy": val_final["balanced_accuracy"],
         },
+        "baseline": {"always_distress_f1": always_distress_f1(truth)},
         "confusion": {
             "tn": final_metrics["tn"],
             "fp": final_metrics["fp"],

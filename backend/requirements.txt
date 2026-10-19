@@ -4,3 +4,5 @@ uvicorn
 python-multipart
 numpy
 scipy
+scikit-learn
+opensmile

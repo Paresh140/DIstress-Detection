@@ -293,7 +293,7 @@ export function TrainingView() {
       </p>
 
       <div className="stat-grid">
-        <Stat label="Best test F1" value={best.f1.toFixed(2)} note={`epoch ${best.epoch}`} />
+        <Stat label="Test F1" value={best.f1.toFixed(2)} note={`epoch ${best.epoch}, chosen on validation`} />
         <Stat label="Accuracy" value={best.accuracy.toFixed(2)} note="held-out actors" />
         <Stat label="Precision" value={best.precision.toFixed(2)} note="distress predictions" />
         <Stat label="Recall" value={best.recall.toFixed(2)} note="distress clips caught" />
