@@ -5,14 +5,18 @@ next four actors choose the checkpoint (or the regularization strength), and
 the other sixteen train. Every actor is a test speaker exactly once, and the
 folds are reported as mean ± standard deviation.
 
-Two models run on the same folds:
+Three models run on the same folds:
   cnn      the DistressNet audio branch (log-mel CNN)
   egemaps  eGeMAPS v02 functionals (88 features, openSMILE) + logistic regression
+  wavlm    frozen WavLM-base-plus, mean-pooled layers, small trained head
+           (app/speech_encoder.py; --encoder facebook/wav2vec2-base swaps the encoder)
 
 Usage, from backend/:
-  python -m app.cv                 # both models
+  python -m app.cv                 # all three
   python -m app.cv --only cnn
   python -m app.cv --only egemaps
+  python -m app.cv --only wavlm
+  python -m app.cv --only wavlm --encoder facebook/wav2vec2-base   # reported as wav2vec2
 """
 
 from __future__ import annotations
@@ -27,6 +31,7 @@ import torch
 
 from .audio import file_to_logmel
 from .dataset import ALL_ACTORS, discover
+from .speech_encoder import DEFAULT_ENCODER, HEAD_EPOCHS, embed_clips, fit_head, predict
 from .train import EPOCHS, SEED, _binary_metrics, always_distress_f1, auroc, fit_audio, score_audio
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -171,7 +176,52 @@ def run_egemaps(clips: list, plan: list[dict]) -> dict:
     }
 
 
-def run(only: str | None = None, epochs: int = EPOCHS) -> dict:
+def encoder_key(encoder: str) -> str:
+    return "wavlm" if "wavlm" in encoder.lower() else "wav2vec2"
+
+
+def run_ssl(clips: list, plan: list[dict], encoder: str, epochs: int = HEAD_EPOCHS) -> dict:
+    paths = [str(clip.path) for clip in clips]
+    cache = ARTIFACTS / "ssl_cache" / f"{encoder.replace('/', '__')}.npz"
+    features = embed_clips(paths, encoder, cache)
+    labels = np.array([clip.label for clip in clips])
+    actors = np.array([clip.actor for clip in clips])
+    name = encoder_key(encoder)
+
+    per_fold = []
+    for k, split in enumerate(plan, start=1):
+        train = np.isin(actors, list(split["train"]))
+        val = np.isin(actors, list(split["val"]))
+        test = np.isin(actors, list(split["test"]))
+        fitted = fit_head(features[train], labels[train], features[val], labels[val], epochs=epochs)
+        scored = _scored(labels[test], predict(fitted, features[test]))
+        top = int(np.argmax(fitted["layer_weights"]))
+        print(
+            f"{name} fold {k}: epoch {fitted['epoch']}  val bal {fitted['val_balanced_accuracy']:.3f}  "
+            f"test bal {scored['balanced_accuracy']:.3f}  heaviest layer {top}"
+        )
+        per_fold.append(
+            {
+                "fold": k,
+                "test_actors": sorted(split["test"]),
+                "val_actors": sorted(split["val"]),
+                "selected_epoch": fitted["epoch"],
+                "val_balanced_accuracy": round(fitted["val_balanced_accuracy"], 4),
+                "layer_weights": fitted["layer_weights"],
+                "test_clips": int(test.sum()),
+                **_public(scored),
+            }
+        )
+    return {
+        "model": f"{encoder} (frozen), mean-pooled hidden layers, learned layer weights + MLP head",
+        "encoder": encoder,
+        "epochs": epochs,
+        "folds": per_fold,
+        "summary": _summary(per_fold),
+    }
+
+
+def run(only: str | None = None, epochs: int = EPOCHS, encoder: str = DEFAULT_ENCODER) -> dict:
     random.seed(SEED)
     np.random.seed(SEED)
     torch.manual_seed(SEED)
@@ -200,6 +250,8 @@ def run(only: str | None = None, epochs: int = EPOCHS) -> dict:
         report["models"]["cnn"] = run_cnn(clips, plan, epochs)
     if only in (None, "egemaps"):
         report["models"]["egemaps"] = run_egemaps(clips, plan)
+    if only in (None, "wavlm"):
+        report["models"][encoder_key(encoder)] = run_ssl(clips, plan, encoder)
 
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     out = ARTIFACTS / "cv_report.json"
@@ -220,7 +272,8 @@ def run(only: str | None = None, epochs: int = EPOCHS) -> dict:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--only", choices=("cnn", "egemaps"))
-    parser.add_argument("--epochs", type=int, default=EPOCHS)
+    parser.add_argument("--only", choices=("cnn", "egemaps", "wavlm"))
+    parser.add_argument("--epochs", type=int, default=EPOCHS, help="CNN epochs")
+    parser.add_argument("--encoder", default=DEFAULT_ENCODER, help="Hugging Face id of the pretrained speech encoder")
     args = parser.parse_args()
-    run(args.only, args.epochs)
+    run(args.only, args.epochs, args.encoder)
