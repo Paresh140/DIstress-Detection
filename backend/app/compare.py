@@ -65,16 +65,17 @@ def within_tables(lines: list[str], checks: list[tuple[str, bool | None, str]]) 
             for t in tests:
                 lines.append(f"| {t['a']} | {t['b']} | {t['mean_difference']:+.3f} | {t['t_test_p']} | {t['wilcoxon_p']} |")
             lines.append("\nWith five or six folds the smallest possible two-sided Wilcoxon p is 0.0625 or 0.031, so read it with the t-test.")
-        wavlm = report["models"].get("wavlm")
-        if wavlm and "summary_calibrated" in wavlm:
+        for name, wavlm in report["models"].items():
+            if not name.startswith(("wavlm", "wav2vec2")) or "summary_calibrated" not in wavlm:
+                continue
             cal = wavlm["summary_calibrated"]
             bal = cal["balanced_accuracy"]["mean"]
-            checks.append((f"{corpus} WavLM balanced accuracy ≥ {WITHIN_TARGET[corpus]}", bal >= WITHIN_TARGET[corpus], f"{bal:.3f} calibrated, {wavlm['summary']['balanced_accuracy']['mean']:.3f} raw"))
+            checks.append((f"{corpus} {name} balanced accuracy ≥ {WITHIN_TARGET[corpus]}", bal >= WITHIN_TARGET[corpus], f"{bal:.3f} calibrated, {wavlm['summary']['balanced_accuracy']['mean']:.3f} raw"))
             folds = cal.get("beats_always_distress_folds", "0/0")
             won, total = (int(x) for x in folds.split("/"))
-            checks.append((f"{corpus} WavLM F1 above always-distress in every fold", won == total and total > 0, folds))
+            checks.append((f"{corpus} {name} F1 above always-distress in every fold", won == total and total > 0, folds))
             ece = cal["ece"]["mean"]
-            checks.append((f"{corpus} WavLM ECE ≤ {ECE_TARGET} after temperature scaling", ece <= ECE_TARGET, f"{ece:.3f} (raw {wavlm['summary']['ece']['mean']:.3f})"))
+            checks.append((f"{corpus} {name} ECE ≤ {ECE_TARGET} after temperature scaling", ece <= ECE_TARGET, f"{ece:.3f} (raw {wavlm['summary']['ece']['mean']:.3f})"))
 
 
 def cross_table(lines: list[str], checks: list[tuple[str, bool | None, str]]) -> None:
@@ -101,10 +102,11 @@ def cross_table(lines: list[str], checks: list[tuple[str, bool | None, str]]) ->
             cells.append(f"{cal['balanced_accuracy']:.3f}{ci_text} (spec {cal['specificity']:.2f})")
         lines.append(f"| {setting} | " + " | ".join(cells) + " |")
 
-    for norm in ("", "+corpus", "+speaker"):
-        wavlm, egemaps = models.get(f"wavlm{norm}"), models.get(f"egemaps{norm}")
-        if not wavlm or "calibrated" not in wavlm[0]:
+    for name, wavlm in models.items():
+        if not name.startswith(("wavlm", "wav2vec2")) or "calibrated" not in wavlm[0]:
             continue
+        norm = "+" + name.split("+", 1)[1] if "+" in name else ""
+        egemaps = models.get(f"egemaps{norm}")
         label = norm.lstrip("+") or "no normalization"
         for setting in CROSS:
             w = next((r for r in wavlm if r["name"] == setting), None)
@@ -115,7 +117,7 @@ def cross_table(lines: list[str], checks: list[tuple[str, bool | None, str]]) ->
             beats = e is not None and "calibrated" in e and bal > e["calibrated"]["balanced_accuracy"]
             ok = bal >= CROSS_TARGET and spec > SPEC_TARGET and beats
             detail = f"{bal:.3f}, spec {spec:.2f}" + (f", eGeMAPS {e['calibrated']['balanced_accuracy']:.3f}" if e and "calibrated" in e else ", no eGeMAPS run")
-            checks.append((f"{setting} ({label}): ≥ {CROSS_TARGET}, spec > {SPEC_TARGET}, above eGeMAPS", ok, detail))
+            checks.append((f"{setting}, {name} ({label}): ≥ {CROSS_TARGET}, spec > {SPEC_TARGET}, above eGeMAPS", ok, detail))
 
 
 def main() -> str:
