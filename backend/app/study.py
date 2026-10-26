@@ -10,6 +10,13 @@ Usage, from backend/:
   python -m app.study                          # all three models
   python -m app.study --models wavlm egemaps
   python -m app.study --models wavlm --encoder facebook/wav2vec2-base   # reported as wav2vec2
+  python -m app.study --models egemaps wavlm --norm speaker              # reported as wavlm+speaker
+
+--norm standardizes the eGeMAPS and WavLM features of each corpus (corpus) or
+each speaker (speaker) with that group's own mean and std before the model sees
+them. It uses no labels, only unlabeled audio from the same group, and removes
+the offset between recording setups that otherwise shifts every score across
+corpora. The CNN is not affected.
 
 The network is audio only. Checkpoint selection uses speakers held out of
 training, and the reported test speakers are touched once. Text is not a
@@ -112,6 +119,21 @@ def _run(name: str, train_clips: list, val_clips: list, test_clips: list, cache:
 
 def _arrays(clips: list, features: dict[str, np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
     return np.stack([features[str(clip.path)] for clip in clips]), np.array([clip.label for clip in clips])
+
+
+def _normalize(features: dict[str, np.ndarray], clips: list, how: str) -> dict[str, np.ndarray]:
+    if how == "none":
+        return features
+    groups: dict[tuple, list[str]] = {}
+    for clip in clips:
+        key = (clip.corpus,) if how == "corpus" else (clip.corpus, clip.speaker)
+        groups.setdefault(key, []).append(str(clip.path))
+    out = {}
+    for paths in groups.values():
+        x = np.stack([features[path] for path in paths])
+        x = (x - x.mean(axis=0)) / (x.std(axis=0) + 1e-6)
+        out.update(zip(paths, x))
+    return out
 
 
 def _run_wavlm(name: str, train_clips: list, val_clips: list, test_clips: list, features: dict) -> dict:
@@ -254,7 +276,7 @@ def _text_report(ravdess: list, crema: list) -> dict:
     }
 
 
-def run(models: tuple[str, ...] = ("cnn", "egemaps", "wavlm"), encoder: str = DEFAULT_ENCODER) -> dict:
+def run(models: tuple[str, ...] = ("cnn", "egemaps", "wavlm"), encoder: str = DEFAULT_ENCODER, norm: str = "none") -> dict:
     random.seed(SEED)
     np.random.seed(SEED)
     ravdess = discover(RAVDESS_ROOT, "RAVDESS")
@@ -276,20 +298,22 @@ def run(models: tuple[str, ...] = ("cnn", "egemaps", "wavlm"), encoder: str = DE
         ("Train RAVDESS, test CREMA-D", _take(ravdess, rav_split["train"] | rav_split["test"]), _take(ravdess, rav_val_ids), crema),
         ("Train CREMA-D, test RAVDESS", _take(crema, crema_split["train"] | crema_split["test"]), _take(crema, crema_val_ids), ravdess),
     ]
-    paths = [str(clip.path) for clip in ravdess + crema]
+    clips = ravdess + crema
+    paths = [str(clip.path) for clip in clips]
+    suffix = "" if norm == "none" else f"+{norm}"
     results: dict[str, list[dict]] = {}
     if "cnn" in models:
         cache: dict[str, torch.Tensor] = {}
         results["cnn"] = [_run(*setting, cache) for setting in settings]
     if "egemaps" in models:
-        print("\negemaps")
-        features = dict(zip(paths, _egemaps(paths, ARTIFACTS / "egemaps_cache.json")))
-        results["egemaps"] = [_run_egemaps(*setting, features) for setting in settings]
+        print(f"\negemaps{suffix}")
+        features = _normalize(dict(zip(paths, _egemaps(paths, ARTIFACTS / "egemaps_cache.json"))), clips, norm)
+        results[f"egemaps{suffix}"] = [_run_egemaps(*setting, features) for setting in settings]
     if "wavlm" in models:
-        name = encoder_key(encoder)
+        name = encoder_key(encoder) + suffix
         print(f"\n{name}")
         cache_file = ARTIFACTS / "ssl_cache" / f"{encoder.replace('/', '__')}.npz"
-        features = dict(zip(paths, embed_clips(paths, encoder, cache_file)))
+        features = _normalize(dict(zip(paths, embed_clips(paths, encoder, cache_file))), clips, norm)
         results[name] = [_run_wavlm(*setting, features) for setting in settings]
 
     out = ARTIFACTS / "cross_corpus_report.json"
@@ -327,13 +351,17 @@ def run(models: tuple[str, ...] = ("cnn", "egemaps", "wavlm"), encoder: str = DE
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2))
 
-    print(f"\n{'balanced accuracy (specificity)':<32}" + "".join(f"{name:>18}" for name in by_model))
-    for i, (setting, *_rest) in enumerate(settings):
-        cells = []
-        for rows in by_model.values():
-            row = rows[i] if i < len(rows) else None
-            cells.append(f"{row['test_balanced_accuracy']:.3f} ({row['test_specificity']:.2f})".rjust(18) if row else "-".rjust(18))
-        print(f"{setting:<32}" + "".join(cells))
+    def cell(row: dict | None, key: str) -> str:
+        if not row or row.get(key) is None:
+            return "-".rjust(16)
+        if key == "test_balanced_accuracy":
+            return f"{row[key]:.3f} ({row['test_specificity']:.2f})".rjust(16)
+        return f"{row[key]:.3f}".rjust(16)
+
+    for key, title in (("test_balanced_accuracy", "balanced accuracy (specificity)"), ("test_auroc", "AUROC")):
+        print(f"\n{title:<30}" + "".join(f"{name:>16}" for name in by_model))
+        for i, (setting, *_rest) in enumerate(settings):
+            print(f"{setting:<30}" + "".join(cell(rows[i] if i < len(rows) else None, key) for rows in by_model.values()))
     return report
 
 
@@ -341,5 +369,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--models", nargs="+", choices=("cnn", "egemaps", "wavlm"), default=["cnn", "egemaps", "wavlm"])
     parser.add_argument("--encoder", default=DEFAULT_ENCODER, help="Hugging Face id of the pretrained speech encoder")
+    parser.add_argument("--norm", choices=("none", "corpus", "speaker"), default="none", help="feature normalization for eGeMAPS and WavLM")
     args = parser.parse_args()
-    run(tuple(args.models), args.encoder)
+    run(tuple(args.models), args.encoder, args.norm)
