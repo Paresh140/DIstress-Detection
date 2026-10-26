@@ -17,13 +17,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from . import llm
+from . import transcribe as stt
 from .audio import file_to_logmel
-from .chat import prompts, reply
+from .chat import prompts, respond
 from .judge import adjudicate
 from .language import read_language
 from .model import DistressNet, architecture_spec
 from .storage import LOCAL_ARTIFACTS, artifact_file, clip_root, drive_folder
 from .train import EPOCHS
+from .voice import HEAD_FILE, VoiceModel
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = LOCAL_ARTIFACTS
@@ -77,6 +80,25 @@ def _load_model() -> DistressNet:
     return _model
 
 
+_voice: VoiceModel | None = None
+_voice_error = ""
+
+
+def _voice_model() -> VoiceModel | None:
+    """The WavLM head when artifacts/voice_head.pt exists, else None and the CNN is used."""
+    global _voice, _voice_error
+    path = artifact_file(HEAD_FILE)
+    if not path.exists():
+        return None
+    if _voice is None or _voice.mtime != path.stat().st_mtime:
+        try:
+            _voice = VoiceModel(path)
+            _voice_error = ""
+        except Exception as exc:  # noqa: BLE001
+            _voice, _voice_error = None, f"The WavLM voice model could not load, so the CNN is used. {exc}"
+    return _voice
+
+
 def _report() -> dict | None:
     path = _report_path()
     if not path.exists():
@@ -96,38 +118,54 @@ def _resolve_clip(file_name: str) -> Path:
 
 def _predict(path: Path | None, transcript: str = "") -> dict:
     voice_probability = None
+    voice_threshold = 0.5
+    voice_extra: dict = {}
     logit_value = 0.0
     tap_means: dict[str, float] = {}
     spec: list = []
     embedding: list = []
+    speech_to_text = None
     if path is not None:
-        if not _weights().exists():
-            raise HTTPException(status_code=409, detail="Audio branch weights are not trained yet.")
         mel = file_to_logmel(str(path))
-        model = _load_model()
-        batch = mel.unsqueeze(0).unsqueeze(0).to(_device())
-        with torch.no_grad():
-            logit, taps = model.audio.forward_features(batch)
-        logit_value = float(logit.squeeze().cpu())
-        voice_probability = float(torch.sigmoid(logit).squeeze().cpu())
-        tap_means = {
-            key: round(float(value.detach().abs().mean().cpu()), 4)
-            for key, value in taps.items()
-            if key != "input"
-        }
         spec = np.round(mel.numpy(), 3).tolist()
-        embedding = [round(float(v), 3) for v in taps["embed"].squeeze().detach().cpu().tolist()]
+        wavlm = _voice_model()
+        if wavlm is not None:
+            scored = wavlm.score(str(path))
+            voice_probability = scored["probability"]
+            voice_threshold = scored["threshold"]
+            voice_extra = {key: scored[key] for key in ("model", "classes", "time_weights", "layer_weights") if key in scored}
+        else:
+            if not _weights().exists():
+                raise HTTPException(status_code=409, detail="No voice model is trained yet.")
+            model = _load_model()
+            batch = mel.unsqueeze(0).unsqueeze(0).to(_device())
+            with torch.no_grad():
+                logit, taps = model.audio.forward_features(batch)
+            logit_value = float(logit.squeeze().cpu())
+            voice_probability = float(torch.sigmoid(logit).squeeze().cpu())
+            voice_extra = {"model": "log-mel CNN"}
+            tap_means = {
+                key: round(float(value.detach().abs().mean().cpu()), 4)
+                for key, value in taps.items()
+                if key != "input"
+            }
+            embedding = [round(float(v), 3) for v in taps["embed"].squeeze().detach().cpu().tolist()]
+        if not transcript.strip() and stt.available():
+            speech_to_text = stt.transcribe(str(path))
+            if speech_to_text:
+                transcript = speech_to_text["text"]
     language = read_language(transcript)
-    verdict = adjudicate(voice_probability, language, transcript)
+    verdict = adjudicate(voice_probability, language, transcript, voice_threshold=voice_threshold)
     voice_label = None
     if voice_probability is not None:
-        voice_label = "distress" if voice_probability >= 0.5 else "calm"
+        voice_label = "distress" if voice_probability >= voice_threshold else "calm"
     return {
         "file": path.name if path else "words",
         "label": verdict["decision"],
+        "band": verdict["band"],
         "probability": verdict["confidence"],
         "logit": round(logit_value, 4),
-        "threshold": 0.5,
+        "threshold": round(voice_threshold, 4),
         "modality": (
             "voice+words"
             if transcript.strip() and voice_probability is not None
@@ -136,10 +174,13 @@ def _predict(path: Path | None, transcript: str = "") -> dict:
             else "words"
         ),
         "transcript": transcript.strip(),
+        "speech_to_text": speech_to_text,
         "voice": {
             "label": voice_label,
             "probability": None if voice_probability is None else round(voice_probability, 4),
             "logit": round(logit_value, 4),
+            "threshold": round(voice_threshold, 4),
+            **voice_extra,
         },
         "language": language,
         "judge": verdict,
@@ -158,6 +199,7 @@ class ChatBody(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     analysis: dict | None = None
     history: list[ChatTurn] = Field(default_factory=list)
+    state: dict | None = None
 
 
 class ClipBody(BaseModel):
@@ -171,7 +213,16 @@ class WordsBody(BaseModel):
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "weights": _weights().exists(), "report": _report_path().exists()}
+    wavlm = artifact_file(HEAD_FILE).exists()
+    return {
+        "ok": True,
+        "weights": _weights().exists() or wavlm,
+        "report": _report_path().exists(),
+        "voice_model": "wavlm" if wavlm and not _voice_error else "cnn",
+        "voice_error": _voice_error,
+        "llm": llm.available() or "none",
+        "speech_to_text": stt.available(),
+    }
 
 
 @app.get("/api/network")
@@ -528,5 +579,5 @@ async def analyze_upload_file(file: UploadFile = File(...), transcript: str = Fo
 @app.post("/api/chat")
 def chat(body: ChatBody):
     history = [{"role": turn.role, "text": turn.text} for turn in body.history[-8:]]
-    text = reply(body.message, _report(), body.analysis, history)
-    return {"reply": text, "prompts": prompts(body.analysis)}
+    text, state = respond(body.message, _report(), body.analysis, history, body.state)
+    return {"reply": text, "prompts": prompts(body.analysis), "state": state}

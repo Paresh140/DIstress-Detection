@@ -253,8 +253,10 @@ export function Monitor({
         <p className="eyebrow">Monitor</p>
         <h1>Listen for the distress class.</h1>
         <p className="lede">
-          The neural network scores the voice. A language model scores the words. A judge model decides. If that
-          decision is distress, the assistant asks what is going on and stays with you. This is not a diagnosis.
+          A voice model scores how the clip sounds, and Whisper writes down the words for a language model to read. The
+          judge puts the reading in one of three bands: calm, check-in, or support. A crisis screen runs on the words
+          first. If the band is check-in or support, the assistant asks what is going on and listens. This is not a
+          diagnosis.
         </p>
       </header>
 
@@ -341,25 +343,37 @@ export function Monitor({
         <div className={`reading ${analysis?.label ?? "empty"}`}>
           {analysis ? (
             <>
-              <p className="fine">{analysis.judge?.source === "judge model" ? "Judge model" : analysis.judge ? "Judge" : analysis.file}</p>
+              <p className="fine">{analysis.judge ? "Judge" : analysis.file}</p>
               <p className="score">{analysis.probability.toFixed(2)}</p>
-              <p className="verdict">{analysis.label}</p>
+              <p className="verdict">{analysis.band ?? analysis.label}</p>
               {analysis.voice?.probability != null || analysis.language?.probability != null ? (
                 <ul className="signals">
                   {analysis.voice?.probability != null ? (
                     <li>
-                      Voice network <b>{analysis.voice.label}</b> {analysis.voice.probability.toFixed(2)}
+                      {analysis.voice.model?.includes("wavlm") ? "WavLM voice" : "Voice network"}{" "}
+                      <b>{analysis.judge?.voice_band ?? analysis.voice.label}</b> {analysis.voice.probability.toFixed(2)}
+                      {analysis.voice.threshold != null ? ` (threshold ${analysis.voice.threshold.toFixed(2)})` : ""}
                     </li>
                   ) : null}
                   {analysis.language?.probability != null ? (
                     <li>
                       {analysis.language.source === "language model" ? "Language model" : "Words"}{" "}
-                      <b>{analysis.language.label}</b> {analysis.language.probability.toFixed(2)}
+                      <b>{analysis.judge?.words_band ?? analysis.language.label}</b> {analysis.language.probability.toFixed(2)}
+                    </li>
+                  ) : null}
+                  {analysis.judge?.risk && analysis.judge.risk !== "none" ? (
+                    <li>
+                      Crisis screen <b>{analysis.judge.risk}</b>
                     </li>
                   ) : null}
                 </ul>
               ) : null}
               <p className="fine">{analysis.judge?.reason ?? `Threshold 0.50. Logit ${analysis.logit.toFixed(2)}.`}</p>
+              {analysis.speech_to_text ? (
+                <p className="fine">
+                  {analysis.speech_to_text.model} heard: “{analysis.speech_to_text.text || "no words"}”
+                </p>
+              ) : null}
               {analysis.embedding.length ? (
                 <div className="embed" aria-hidden="true">
                   {analysis.embedding.map((value, index) => (
@@ -373,7 +387,10 @@ export function Monitor({
               <p className="eyebrow">No clip yet</p>
               <p className="score faint">0.50</p>
               <p className="verdict">waiting</p>
-              <p className="fine">A probability at or above 0.50 is labeled distress. Below that, calm.</p>
+              <p className="fine">
+                At or above the voice threshold is support, just under it is a check-in, and well under it is calm. The
+                words are banded the same way, and the judge keeps the higher band.
+              </p>
             </>
           )}
         </div>
@@ -381,7 +398,7 @@ export function Monitor({
 
       <figure className="spec-card">
         <figcaption>
-          <span>What the network sees</span>
+          <span>{analysis?.voice?.model?.includes("wavlm") ? "The clip (WavLM reads the waveform itself)" : "What the network sees"}</span>
           <span>64 mel bands × 128 frames</span>
         </figcaption>
         <canvas ref={canvasRef} className={analysis?.spectrogram?.length ? "" : "hidden-canvas"} />

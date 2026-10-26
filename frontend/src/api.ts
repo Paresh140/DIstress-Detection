@@ -150,7 +150,8 @@ export async function sendChat(
   message: string,
   analysis: Analysis | null,
   history: { role: string; text: string }[] = [],
-): Promise<{ reply: string; prompts: string[] }> {
+  state: Record<string, unknown> | null = null,
+): Promise<{ reply: string; prompts: string[]; state: Record<string, unknown> | null }> {
   const slim = analysis
     ? {
         file: analysis.file,
@@ -171,6 +172,7 @@ export async function sendChat(
       message,
       analysis: slim,
       history: history.slice(-8).map((turn) => ({ role: turn.role, text: turn.text })),
+      state,
     }),
   });
   if (!response.ok) throw new Error(await readError(response));

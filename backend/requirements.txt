@@ -7,3 +7,5 @@ scipy
 scikit-learn
 opensmile
 transformers
+faster-whisper
+pytest

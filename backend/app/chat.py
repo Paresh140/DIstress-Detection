@@ -1,4 +1,8 @@
-"""Studio assistant. Answers from the training report and the latest reading."""
+"""Studio assistant. Answers from the training report and the latest reading.
+
+After a check-in or support reading, messages go to the support conversation
+in agent.py instead, which never shows scores to the person.
+"""
 
 from __future__ import annotations
 
@@ -6,8 +10,8 @@ import json
 import re
 from pathlib import Path
 
+from . import agent
 from .judge import CRISIS_CARE, is_crisis
-from .llm import complete
 
 
 def _fmt(value: float) -> str:
@@ -25,68 +29,6 @@ def _span(actors: list[int]) -> str:
 
 def _has(text: str, words: tuple[str, ...]) -> bool:
     return any(re.search(rf"\b{re.escape(word)}\b", text) for word in words)
-
-
-def _crisis(text: str) -> str | None:
-    if is_crisis(text):
-        return CRISIS_CARE
-    return None
-
-
-def _help(message: str, analysis: dict, history: list[dict] | None) -> str | None:
-    voice = analysis.get("voice") or {}
-    language = analysis.get("language") or {}
-    judge = analysis.get("judge") or {}
-    context = (
-        f"Voice network: {voice.get('label', 'not run')}"
-        + (f" at {voice.get('probability')}" if voice.get("probability") is not None else "")
-        + f". Language model: {language.get('label', 'unclear')}"
-        + (f" at {language.get('probability')}" if language.get("probability") is not None else "")
-        + f". Judge: {judge.get('decision', 'distress')}. {judge.get('reason', '')} "
-        f"They first said: {analysis.get('transcript', '')}"
-    )
-    messages: list[dict] = [
-        {
-            "role": "system",
-            "content": (
-                "You are the DistressNet assistant after a distress reading. "
-                "Help by asking what is going on and listening. "
-                "You are not a clinician. Do not diagnose, name a disorder, or recommend medication or treatment. "
-                "Do not give any steps for self-harm. "
-                "If they mention wanting to die or hurting themselves, tell them to call or text 988 in the US, "
-                "or local emergency services, and stop. "
-                "Two to four sentences. Plain language. "
-                + context
-            ),
-        }
-    ]
-    for turn in (history or [])[-6:]:
-        role = "assistant" if turn.get("role") == "assistant" else "user"
-        text = str(turn.get("text", "")).strip()
-        if text:
-            messages.append({"role": role, "content": text})
-    messages.append({"role": "user", "content": message})
-    reply_text = complete(messages, temperature=0.3)
-    cleaned = (reply_text or "").strip()
-    if not cleaned or is_crisis(cleaned):
-        return None
-    return cleaned
-
-
-def _check_in(message: str, analysis: dict) -> str:
-    voice = (analysis.get("voice") or {}).get("label")
-    words = (analysis.get("language") or {}).get("label") or "unclear"
-    voice_bit = f"The voice network had this as {voice}" if voice else "No voice clip was attached"
-    if len(message.split()) >= 4:
-        return (
-            f"Thank you for telling me. {voice_bit}, and the words were read as {words}. "
-            "I can't diagnose it. If it gets worse, or you feel unsafe, contact a clinician or someone you trust. "
-            "You can say more if you want."
-        )
-    return (
-        f"{voice_bit}. The words were read as {words}. "
-        "A quiet voice does not erase what you said. What feels wrong right now?"
-    )
 
 
 def _study_reply() -> str:
@@ -115,55 +57,67 @@ def _study_reply() -> str:
     )
 
 
+STUDIO_WORDS = (
+    "layer",
+    "layers",
+    "trained",
+    "training",
+    "epoch",
+    "accuracy",
+    "network",
+    "actor",
+    "actors",
+    "f1",
+    "limit",
+    "limits",
+    "crema",
+    "iemocap",
+    "corpus",
+    "cross",
+    "fusion",
+    "sentence",
+    "sentences",
+)
+
+
+def respond(
+    message: str,
+    report: dict | None,
+    analysis: dict | None,
+    history: list[dict] | None = None,
+    state: dict | None = None,
+) -> tuple[str, dict | None]:
+    """Reply and the next support state (None while no support conversation is running)."""
+    text = message.strip()
+    lower = text.lower()
+    judge = (analysis or {}).get("judge") or {}
+    studio_question = _has(lower, STUDIO_WORDS)
+    if state is None and judge.get("ask"):
+        state = agent.new_state("check-in" if judge.get("band") == "check-in" else "support")
+    if text and state is not None and state.get("active") and not studio_question:
+        return agent.respond(text, state, history)
+    if text and is_crisis(lower):
+        return CRISIS_CARE, {**(state or agent.new_state()), "active": True, "risk": "high", "step": "crisis"}
+    return reply(message, report, analysis, history), state
+
+
 def reply(message: str, report: dict | None, analysis: dict | None, history: list[dict] | None = None) -> str:
     text = message.strip()
     lower = text.lower()
     if not text:
         return "Ask about this reading, the layers, or how the audio branch was trained."
 
-    crisis = _crisis(lower)
-    if crisis:
-        return crisis
+    if is_crisis(lower):
+        return CRISIS_CARE
 
     if _has(lower, ("who are you", "what are you", "your name", "who you are")) or lower in {"who", "name"}:
         return (
             "I am the DistressNet assistant. "
-            "The neural network scores a voice, a language model scores the words, and a judge model decides. "
+            "A voice model scores how a clip sounds, a language model reads the words, and a judge puts the reading in one of three bands: "
+            "calm, check-in, or support. "
             "I explain those readings, the layers, and the training run. "
-            "If the judge says distress, I ask what is going on and stay with you. I do not diagnose."
+            "If the judge asks for a check-in or support, I ask what is going on and listen. I am not a counselor and I do not diagnose."
         )
-
-    judge = (analysis or {}).get("judge") or {}
-    if judge.get("ask") and not _has(
-        lower,
-        (
-            "layer",
-            "layers",
-            "trained",
-            "training",
-            "epoch",
-            "accuracy",
-            "network",
-            "actor",
-            "actors",
-            "f1",
-            "limit",
-            "limits",
-            "crema",
-            "iemocap",
-            "corpus",
-            "cross",
-            "fusion",
-            "sentence",
-            "sentences",
-        ),
-    ):
-        if _has(lower, ("explain", "voice", "words", "judge", "decide", "decision", "disagree")):
-            return f"{judge.get('reason', '')} {_check_in('', analysis or {})}"
-        helped = _help(text, analysis or {}, history)
-        if helped:
-            return helped
-        return _check_in(text, analysis or {})
 
     if report is None:
         return (
@@ -237,9 +191,8 @@ def reply(message: str, report: dict | None, analysis: dict | None, history: lis
         return (
             f"The trained path is a log-mel spectrogram into three conv blocks (16, 32, then 64 filters), "
             f"then a 64-d embedding and a single distress logit. That audio branch has {params['audio']:,} parameters. "
-            f"The vision stack ({params['vision_untrained']:,} parameters) and the fusion head "
-            f"({params['fusion_untrained']:,}) are in the diagram so the full model is visible. "
-            "Their weights were not updated. Open Network and scrub the epochs to see how activation and gradient size moved in the audio layers."
+            "A face branch and a fusion head were sketched early on but never trained, so they are future work and not part of this model. "
+            "Open Network and scrub the epochs to see how activation and gradient size moved in the audio layers."
         )
 
     if _has(lower, ("label", "labels", "class", "emotion", "emotions", "sad", "angry", "fearful")):
@@ -301,7 +254,10 @@ def reply(message: str, report: dict | None, analysis: dict | None, history: lis
 
 
 def prompts(analysis: dict | None) -> list[str]:
-    if (analysis or {}).get("judge", {}).get("ask"):
+    judge = (analysis or {}).get("judge", {})
+    if judge.get("band") == "check-in":
+        return ["I'm okay, thanks", "Not great, honestly", "Why are you asking?"]
+    if judge.get("ask"):
         return [
             "I have had a hard day",
             "My body feels wrong",

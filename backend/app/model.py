@@ -149,32 +149,6 @@ def architecture_spec() -> dict:
             "params": count_params(net.audio.head),
         },
     ]
-    vision_layers = [
-        {
-            "id": "v-input",
-            "name": "Face crop",
-            "kind": "input",
-            "shape": "3 × 96 × 96",
-            "detail": "Planned input from RAVDESS speech video. Not used in this training run.",
-            "params": 0,
-        },
-        {
-            "id": "v-conv",
-            "name": "Vision conv stack",
-            "kind": "conv",
-            "shape": "64-d",
-            "detail": "Three conv blocks (16, 32, 64) and a linear map to a 64-d face embedding.",
-            "params": count_params(net.vision),
-        },
-        {
-            "id": "fuse",
-            "name": "Fusion head",
-            "kind": "dense",
-            "shape": "1",
-            "detail": "Concatenates audio and vision embeddings (128-d) and maps them to one logit. Not trained yet.",
-            "params": count_params(net.fuse),
-        },
-    ]
     return {
         "name": "DistressNet",
         "task": "Binary distress vs calm, from speech",
@@ -182,7 +156,9 @@ def architecture_spec() -> dict:
         "optimizer": "Adam",
         "threshold": 0.5,
         "audio_layers": audio_layers,
-        "vision_layers": vision_layers,
+        # The vision branch and fusion head were never trained. They are future work and are not shown as part of the model.
+        "vision_layers": [],
+        "future_work": "A face branch and a fusion head were sketched early and never trained; they are future work, not part of DistressNet.",
         "audio_params": count_params(net.audio),
         "vision_params": count_params(net.vision),
         "fusion_params": count_params(net.fuse),
