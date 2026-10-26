@@ -136,6 +136,28 @@ export async function analyzeUpload(file: File, transcript = ""): Promise<Analys
   return response.json();
 }
 
+export type EnrollStatus = { available: boolean; clips: number; needed: number; active: boolean };
+
+export async function getEnroll(): Promise<EnrollStatus> {
+  const response = await fetch("/api/enroll");
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json();
+}
+
+export async function addEnroll(file: File): Promise<EnrollStatus> {
+  const body = new FormData();
+  body.append("file", file);
+  const response = await fetch("/api/enroll", { method: "POST", body });
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json();
+}
+
+export async function resetEnroll(): Promise<EnrollStatus> {
+  const response = await fetch("/api/enroll", { method: "DELETE" });
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json();
+}
+
 export async function analyzeWords(transcript: string): Promise<Analysis> {
   const response = await fetch("/api/analyze/words", {
     method: "POST",
