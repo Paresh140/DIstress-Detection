@@ -3,7 +3,9 @@
 Training (from backend/, GPU recommended for the first embedding pass):
   python -m app.voice
 
-Trains the four-class attentive head on RAVDESS actors 01–18, plus CREMA-D
+Trains the binary mean-pooled head (the best head in speaker cross-validation
+and across corpora; --head four-attentive gives the proposal's four-class head)
+on RAVDESS actors 01–18, plus CREMA-D
 when data/crema-d/ exists (all but nine speakers). RAVDESS actors 19–20 and
 those nine CREMA-D speakers choose the epoch, the temperature and the
 threshold. RAVDESS actors 21–24 are scored once and the result is saved with
@@ -49,13 +51,14 @@ ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = ROOT / "backend" / "artifacts"
 HEAD_FILE = "voice_head.pt"
 CREMA_VAL_SPEAKERS = 9
+LIVE_HEAD = "binary-mean"
 
 
 def _ids(actors: set[int]) -> set[str]:
     return {f"{actor:02d}" for actor in actors}
 
 
-def train(encoder: str = DEFAULT_ENCODER, head: str = DEFAULT_HEAD, out: Path = ARTIFACTS / HEAD_FILE) -> dict:
+def train(encoder: str = DEFAULT_ENCODER, head: str = LIVE_HEAD, out: Path = ARTIFACTS / HEAD_FILE) -> dict:
     random.seed(SEED)
     np.random.seed(SEED)
     ravdess = discover(ROOT / "data" / "ravdess", "RAVDESS")
@@ -157,6 +160,6 @@ class VoiceModel:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--encoder", default=DEFAULT_ENCODER)
-    parser.add_argument("--head", choices=sorted(HEADS), default=DEFAULT_HEAD)
+    parser.add_argument("--head", choices=sorted(HEADS), default=LIVE_HEAD)
     args = parser.parse_args()
     train(args.encoder, args.head)
