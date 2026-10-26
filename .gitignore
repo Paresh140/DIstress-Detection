@@ -11,3 +11,4 @@ __pycache__/
 frontend/node_modules/
 frontend/dist/
 .DS_Store
+!backend/artifacts/voice_head.pt
