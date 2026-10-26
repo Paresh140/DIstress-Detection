@@ -285,6 +285,17 @@ def score_audio(state: dict, rows: list[dict]) -> dict:
     return {"loss": loss, **metrics}
 
 
+@torch.no_grad()
+def audio_logits(state: dict, rows: list[dict]) -> np.ndarray:
+    """Raw distress logits of a fitted audio branch, one per row, for calibration."""
+    dev = device()
+    model = DistressNet().to(dev)
+    model.audio.load_state_dict(state)
+    model.eval()
+    out = [model.forward_audio(x.to(dev)).squeeze(1).cpu().numpy() for x, _ in DataLoader(MelSet(rows, train=False), batch_size=BATCH)]
+    return np.concatenate(out) if out else np.zeros(0, dtype=np.float32)
+
+
 def _emit(progress: Path | None, payload: dict) -> None:
     if progress is None:
         return

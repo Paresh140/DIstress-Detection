@@ -4,7 +4,7 @@ Each voice model runs the same four train/test settings on the same speaker
 splits: within RAVDESS, within CREMA-D, and across corpora in both directions.
   cnn      the DistressNet audio branch (log-mel CNN)
   egemaps  eGeMAPS v02 functionals + logistic regression, C chosen on validation speakers
-  wavlm    frozen WavLM-base-plus, mean-pooled layers, small trained head (app/speech_encoder.py)
+  wavlm    frozen WavLM-base-plus, attentive pooling, four-class head (app/speech_encoder.py)
 
 Usage, from backend/:
   python -m app.study                          # all three models
@@ -41,9 +41,10 @@ from .dataset import discover as discover_demo
 from .judge import decide
 from .language import read_language
 from .model import DistressNet
-from .cv import C_GRID, _egemaps, _scored, encoder_key
-from .speech_encoder import DEFAULT_ENCODER, embed_clips, fit_head, predict
-from .train import device, fit_audio, score_audio
+from .cv import egemaps_features, labels, model_key, score_split, split_cnn, split_egemaps, split_ssl
+from .speech_encoder import DEFAULT_ENCODER, DEFAULT_HEAD, HEADS, cache_path, embed_clips
+from .stats import speaker_bootstrap
+from .train import device
 
 ROOT = Path(__file__).resolve().parents[2]
 RAVDESS_ROOT = ROOT / "data" / "ravdess"
@@ -70,21 +71,17 @@ def _speaker_split(clips: list, test_ratio: float = 0.2, val_ratio: float = 0.15
     }
 
 
-def _rows(clips: list, cache: dict[str, torch.Tensor]) -> list[dict]:
-    rows = []
-    for clip in clips:
-        key = str(clip.path)
-        if key not in cache:
-            cache[key] = file_to_logmel(key)
-        rows.append({"mel": cache[key], "label": clip.label, "clip": clip})
-    return rows
-
-
 def _take(clips: list, speakers: set[str]) -> list:
     return [clip for clip in clips if clip.speaker in speakers]
 
 
-def _result(name: str, train_clips: list, val_clips: list, test_clips: list, selected: dict, scored: dict) -> dict:
+def _result(name: str, train_clips: list, val_clips: list, test_clips: list, scored: dict) -> dict:
+    raw, cal = scored["raw"], scored["calibrated"]
+    interval = speaker_bootstrap(labels(test_clips), scored["test_probability"], [c.speaker for c in test_clips], scored["threshold"])
+    print(
+        f"{name}: test bal {raw['balanced_accuracy']:.3f} (spec {raw['specificity']:.2f})  "
+        f"calibrated {cal['balanced_accuracy']:.3f} (spec {cal['specificity']:.2f}, CI {interval['balanced_accuracy_ci95']})"
+    )
     return {
         "name": name,
         "train_corpus": sorted({clip.corpus for clip in train_clips}),
@@ -95,33 +92,40 @@ def _result(name: str, train_clips: list, val_clips: list, test_clips: list, sel
         "train_clips": len(train_clips),
         "val_clips": len(val_clips),
         "test_clips": len(test_clips),
-        **selected,
-        "test_loss": round(scored["loss"], 4) if scored.get("loss") is not None else None,
-        "test_accuracy": round(scored["accuracy"], 4),
-        "test_balanced_accuracy": round(scored["balanced_accuracy"], 4),
-        "test_auroc": round(scored["auroc"], 4) if scored.get("auroc") is not None else None,
-        "test_precision": round(scored["precision"], 4),
-        "test_recall": round(scored["recall"], 4),
-        "test_specificity": round(scored["specificity"], 4),
-        "test_f1": round(scored["f1"], 4),
-        "majority_f1": _majority_f1(scored),
-        "confusion": {"tn": scored["tn"], "fp": scored["fp"], "fn": scored["fn"], "tp": scored["tp"]},
+        **scored["selected"],
+        "test_accuracy": round(raw["accuracy"], 4),
+        "test_balanced_accuracy": round(raw["balanced_accuracy"], 4),
+        "test_auroc": round(raw["auroc"], 4) if raw.get("auroc") is not None else None,
+        "test_precision": round(raw["precision"], 4),
+        "test_recall": round(raw["recall"], 4),
+        "test_specificity": round(raw["specificity"], 4),
+        "test_f1": round(raw["f1"], 4),
+        "test_ece": round(raw["ece"], 4),
+        "majority_f1": _majority_f1(raw),
+        "confusion": {"tn": raw["tn"], "fp": raw["fp"], "fn": raw["fn"], "tp": raw["tp"]},
+        "temperature": scored["temperature"],
+        "threshold": scored["threshold"],
+        "calibrated": {
+            "balanced_accuracy": round(cal["balanced_accuracy"], 4),
+            "macro_f1": round(cal["macro_f1"], 4),
+            "specificity": round(cal["specificity"], 4),
+            "recall": round(cal["recall"], 4),
+            "f1": round(cal["f1"], 4),
+            "ece": round(cal["ece"], 4),
+            "beats_always_distress": cal["beats_always_distress"],
+            **interval,
+        },
     }
 
 
 def _run(name: str, train_clips: list, val_clips: list, test_clips: list, cache: dict) -> dict:
     print(f"\ncnn {name}: train {len(train_clips)}  val {len(val_clips)}  test {len(test_clips)}")
-    fitted = fit_audio(_rows(train_clips, cache), _rows(val_clips, cache), epochs=EPOCHS)
-    scored = score_audio(fitted["state"], _rows(test_clips, cache))
-    selected = {"selected_epoch": fitted["epoch"], "val_balanced_accuracy": round(fitted["val_balanced_accuracy"], 4)}
-    return _result(name, train_clips, val_clips, test_clips, selected, scored)
-
-
-def _arrays(clips: list, features: dict[str, np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
-    return np.stack([features[str(clip.path)] for clip in clips]), np.array([clip.label for clip in clips])
+    scored = score_split(split_cnn(train_clips, val_clips, test_clips, cache, EPOCHS), test_clips)
+    return _result(name, train_clips, val_clips, test_clips, scored)
 
 
 def _normalize(features: dict[str, np.ndarray], clips: list, how: str) -> dict[str, np.ndarray]:
+    """Standardize each corpus or speaker with its own statistics (over clips, and time bins for WavLM)."""
     if how == "none":
         return features
     groups: dict[tuple, list[str]] = {}
@@ -130,44 +134,21 @@ def _normalize(features: dict[str, np.ndarray], clips: list, how: str) -> dict[s
         groups.setdefault(key, []).append(str(clip.path))
     out = {}
     for paths in groups.values():
-        x = np.stack([features[path] for path in paths])
-        x = (x - x.mean(axis=0)) / (x.std(axis=0) + 1e-6)
-        out.update(zip(paths, x))
+        x = np.stack([features[path] for path in paths]).astype(np.float32)
+        axes = (0, 2) if x.ndim == 4 else (0,)
+        x = (x - x.mean(axis=axes, keepdims=True)) / (x.std(axis=axes, keepdims=True) + 1e-6)
+        out.update(zip(paths, x.astype(features[paths[0]].dtype)))
     return out
 
 
-def _run_wavlm(name: str, train_clips: list, val_clips: list, test_clips: list, features: dict) -> dict:
-    (xt, yt), (xv, yv), (xs, ys) = (_arrays(c, features) for c in (train_clips, val_clips, test_clips))
-    fitted = fit_head(xt, yt, xv, yv)
-    scored = _scored(ys, predict(fitted, xs))
-    selected = {
-        "selected_epoch": fitted["epoch"],
-        "val_balanced_accuracy": round(fitted["val_balanced_accuracy"], 4),
-        "layer_weights": fitted["layer_weights"],
-    }
-    print(f"{name}: val bal {fitted['val_balanced_accuracy']:.3f}  test bal {scored['balanced_accuracy']:.3f}")
-    return _result(name, train_clips, val_clips, test_clips, selected, scored)
+def _run_wavlm(name: str, train_clips: list, val_clips: list, test_clips: list, features: dict, head: str = DEFAULT_HEAD) -> dict:
+    scored = score_split(split_ssl(train_clips, val_clips, test_clips, features, head), test_clips)
+    return _result(name, train_clips, val_clips, test_clips, scored)
 
 
 def _run_egemaps(name: str, train_clips: list, val_clips: list, test_clips: list, features: dict) -> dict:
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.pipeline import make_pipeline
-    from sklearn.preprocessing import StandardScaler
-
-    (xt, yt), (xv, yv), (xs, ys) = (_arrays(c, features) for c in (train_clips, val_clips, test_clips))
-
-    def model(c: float):
-        return make_pipeline(StandardScaler(), LogisticRegression(C=c, class_weight="balanced", max_iter=5000))
-
-    best_c, best_score = C_GRID[0], -1.0
-    for c in C_GRID:
-        score = _scored(yv, model(c).fit(xt, yt).predict_proba(xv)[:, 1])["balanced_accuracy"]
-        if score > best_score:
-            best_c, best_score = c, score
-    scored = _scored(ys, model(best_c).fit(xt, yt).predict_proba(xs)[:, 1])
-    print(f"{name}: C {best_c}  val bal {best_score:.3f}  test bal {scored['balanced_accuracy']:.3f}")
-    selected = {"selected_c": best_c, "val_balanced_accuracy": round(best_score, 4)}
-    return _result(name, train_clips, val_clips, test_clips, selected, scored)
+    scored = score_split(split_egemaps(train_clips, val_clips, test_clips, features), test_clips)
+    return _result(name, train_clips, val_clips, test_clips, scored)
 
 
 def _majority_f1(scored: dict) -> float:
@@ -276,7 +257,12 @@ def _text_report(ravdess: list, crema: list) -> dict:
     }
 
 
-def run(models: tuple[str, ...] = ("cnn", "egemaps", "wavlm"), encoder: str = DEFAULT_ENCODER, norm: str = "none") -> dict:
+def run(
+    models: tuple[str, ...] = ("cnn", "egemaps", "wavlm"),
+    encoder: str = DEFAULT_ENCODER,
+    norm: str = "none",
+    head: str = DEFAULT_HEAD,
+) -> dict:
     random.seed(SEED)
     np.random.seed(SEED)
     ravdess = discover(RAVDESS_ROOT, "RAVDESS")
@@ -307,14 +293,13 @@ def run(models: tuple[str, ...] = ("cnn", "egemaps", "wavlm"), encoder: str = DE
         results["cnn"] = [_run(*setting, cache) for setting in settings]
     if "egemaps" in models:
         print(f"\negemaps{suffix}")
-        features = _normalize(dict(zip(paths, _egemaps(paths, ARTIFACTS / "egemaps_cache.json"))), clips, norm)
+        features = _normalize(dict(zip(paths, egemaps_features(paths, ARTIFACTS / "egemaps_cache.json"))), clips, norm)
         results[f"egemaps{suffix}"] = [_run_egemaps(*setting, features) for setting in settings]
     if "wavlm" in models:
-        name = encoder_key(encoder) + suffix
+        name = model_key(encoder, head) + suffix
         print(f"\n{name}")
-        cache_file = ARTIFACTS / "ssl_cache" / f"{encoder.replace('/', '__')}.npz"
-        features = _normalize(dict(zip(paths, embed_clips(paths, encoder, cache_file))), clips, norm)
-        results[name] = [_run_wavlm(*setting, features) for setting in settings]
+        features = _normalize(dict(zip(paths, embed_clips(paths, encoder, cache_path(ARTIFACTS, encoder)))), clips, norm)
+        results[name] = [_run_wavlm(*setting, features, head) for setting in settings]
 
     out = ARTIFACTS / "cross_corpus_report.json"
     previous = json.loads(out.read_text()) if out.is_file() else {}
@@ -325,7 +310,9 @@ def run(models: tuple[str, ...] = ("cnn", "egemaps", "wavlm"), encoder: str = DE
         "epochs": EPOCHS,
         "selection": (
             "The epoch (or C for eGeMAPS) is chosen by balanced accuracy on validation speakers from the training corpus, "
-            "so neutral and distress count equally. Test speakers are scored once. "
+            "so neutral and distress count equally. The calibration temperature and the decision threshold are fitted on the same "
+            "validation speakers; test_* fields are raw (threshold 0.5), the calibrated block uses them. "
+            "Confidence intervals resample whole test speakers (1000 rounds). Test speakers are scored once. "
             "Distress F1 is also shown, next to the F1 of a classifier that always predicts the larger class."
         ),
         "iemocap": (
@@ -356,9 +343,15 @@ def run(models: tuple[str, ...] = ("cnn", "egemaps", "wavlm"), encoder: str = DE
             return "-".rjust(16)
         if key == "test_balanced_accuracy":
             return f"{row[key]:.3f} ({row['test_specificity']:.2f})".rjust(16)
+        if key == "calibrated":
+            return f"{row[key]['balanced_accuracy']:.3f} ({row[key]['specificity']:.2f})".rjust(16)
         return f"{row[key]:.3f}".rjust(16)
 
-    for key, title in (("test_balanced_accuracy", "balanced accuracy (specificity)"), ("test_auroc", "AUROC")):
+    for key, title in (
+        ("test_balanced_accuracy", "balanced accuracy (specificity)"),
+        ("calibrated", "calibrated balanced accuracy (spec)"),
+        ("test_auroc", "AUROC"),
+    ):
         print(f"\n{title:<30}" + "".join(f"{name:>16}" for name in by_model))
         for i, (setting, *_rest) in enumerate(settings):
             print(f"{setting:<30}" + "".join(cell(rows[i] if i < len(rows) else None, key) for rows in by_model.values()))
@@ -370,5 +363,6 @@ if __name__ == "__main__":
     parser.add_argument("--models", nargs="+", choices=("cnn", "egemaps", "wavlm"), default=["cnn", "egemaps", "wavlm"])
     parser.add_argument("--encoder", default=DEFAULT_ENCODER, help="Hugging Face id of the pretrained speech encoder")
     parser.add_argument("--norm", choices=("none", "corpus", "speaker"), default="none", help="feature normalization for eGeMAPS and WavLM")
+    parser.add_argument("--head", choices=sorted(HEADS), default=DEFAULT_HEAD, help="WavLM head")
     args = parser.parse_args()
-    run(tuple(args.models), args.encoder, args.norm)
+    run(tuple(args.models), args.encoder, args.norm, args.head)
