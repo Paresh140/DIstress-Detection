@@ -107,7 +107,10 @@ def run(readers: tuple[str, ...] = ("phrases", "llm", "roberta")) -> dict:
             "predictions": [{"text": t, "label": int(y), "probability": round(float(p), 4)} for t, y, p in zip(texts, truth, prob)],
         }
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
-    (ARTIFACTS / "reader_report.json").write_text(json.dumps(report, indent=2))
+    out = ARTIFACTS / "reader_report.json"
+    if out.is_file():  # keep readers from earlier runs, e.g. RoBERTa run on Kaggle and the LLM on a laptop
+        report["readers"] = {**json.loads(out.read_text()).get("readers", {}), **report["readers"]}
+    out.write_text(json.dumps(report, indent=2))
 
     names = list(report["readers"])
     print("\n" + "".ljust(22) + "".join(f"{n:>10}" for n in names))
