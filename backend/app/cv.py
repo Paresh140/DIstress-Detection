@@ -1,27 +1,37 @@
-"""Leave-speakers-out cross-validation on all 24 RAVDESS actors.
+"""Leave-speakers-out cross-validation within one corpus.
 
-Six folds of four actors. In each fold, four actors are the test set, the
-next four actors choose the checkpoint (or the regularization strength), and
-the other sixteen train. Every actor is a test speaker exactly once, and the
-folds are reported as mean ± standard deviation.
+RAVDESS: six folds of four actors (all 24). In each fold, four actors are the
+test set, the next four choose the checkpoint, the regularization strength, the
+calibration temperature and the decision threshold, and the other sixteen
+train. CREMA-D: five folds over its 91 speakers (shuffled once with the seed);
+nine speakers from the next fold validate and the rest train. Every speaker is
+a test speaker exactly once, and folds are reported as mean ± standard
+deviation.
+
+Each fold is scored twice: raw (threshold 0.5, no calibration, comparable with
+the first runs) and calibrated (temperature scaling and a threshold chosen on
+the validation speakers, the proposal's protocol). Expected calibration error
+is reported for both. Models are compared on identical folds with a paired
+t-test and a Wilcoxon signed-rank test.
 
 Three models run on the same folds:
   cnn      the DistressNet audio branch (log-mel CNN)
   egemaps  eGeMAPS v02 functionals (88 features, openSMILE) + logistic regression
-  wavlm    frozen WavLM-base-plus, mean-pooled layers, small trained head
-           (app/speech_encoder.py; --encoder facebook/wav2vec2-base swaps the encoder)
+  wavlm    frozen WavLM-base-plus, learned layer weights, attentive statistics
+           pooling, four-class head (app/speech_encoder.py)
 
 Usage, from backend/:
-  python -m app.cv                 # all three
-  python -m app.cv --only cnn
-  python -m app.cv --only egemaps
+  python -m app.cv                                  # RAVDESS, all three models
+  python -m app.cv --corpus crema-d                 # CREMA-D, five folds
   python -m app.cv --only wavlm
-  python -m app.cv --only wavlm --encoder facebook/wav2vec2-base   # reported as wav2vec2
+  python -m app.cv --only wavlm --head binary-mean  # the first WavLM head, reported as wavlm/binary-mean
+  python -m app.cv --only wavlm --encoder facebook/wav2vec2-base
 """
 
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import random
 from pathlib import Path
@@ -29,87 +39,69 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from . import calibration
 from .audio import file_to_logmel
-from .dataset import ALL_ACTORS, discover
-from .speech_encoder import DEFAULT_ENCODER, HEAD_EPOCHS, embed_clips, fit_head, predict
-from .train import EPOCHS, SEED, _binary_metrics, always_distress_f1, auroc, fit_audio, score_audio
+from .corpora import discover
+from .speech_encoder import DEFAULT_ENCODER, DEFAULT_HEAD, HEAD_EPOCHS, HEADS, cache_path, embed_clips, fit_head, predict_logits, targets
+from .stats import paired
+from .train import EPOCHS, SEED, audio_logits, fit_audio
 
 ROOT = Path(__file__).resolve().parents[2]
-DATA_ROOT = ROOT / "data" / "ravdess"
 ARTIFACTS = ROOT / "backend" / "artifacts"
-FOLD_SIZE = 4
-METRICS = ("balanced_accuracy", "macro_f1", "auroc", "f1", "specificity", "recall", "always_distress_f1")
+CORPORA = {
+    "ravdess": {"name": "RAVDESS", "root": ROOT / "data" / "ravdess", "folds": 6, "val": 4, "shuffle": False, "report": "cv_report.json"},
+    "crema-d": {"name": "CREMA-D", "root": ROOT / "data" / "crema-d", "folds": 5, "val": 9, "shuffle": True, "report": "cv_report_crema-d.json"},
+}
+METRICS = ("balanced_accuracy", "macro_f1", "auroc", "f1", "specificity", "recall", "always_distress_f1", "ece")
 C_GRID = (0.001, 0.01, 0.1, 1.0, 10.0)
 
 
-def folds(actors: list[int] = sorted(ALL_ACTORS)) -> list[dict[str, set[int]]]:
-    """Consecutive blocks of four actors, so each block is two male and two female."""
-    blocks = [set(actors[i : i + FOLD_SIZE]) for i in range(0, len(actors), FOLD_SIZE)]
+def folds(speakers: list[str], n_folds: int, n_val: int, shuffle: bool) -> list[dict[str, set[str]]]:
+    """Contiguous blocks of speakers. Unshuffled RAVDESS blocks are two male and two female actors."""
+    order = sorted(speakers)
+    if shuffle:
+        random.Random(SEED).shuffle(order)
+    blocks = [set(block.tolist()) for block in np.array_split(np.array(order), n_folds)]
     out = []
     for k, test in enumerate(blocks):
-        val = blocks[(k + 1) % len(blocks)]
-        train = set(actors) - test - val
-        out.append({"train": train, "val": val, "test": test})
+        val = set(sorted(blocks[(k + 1) % len(blocks)])[:n_val])
+        out.append({"train": set(order) - test - val, "val": val, "test": test})
     return out
 
 
-def _scored(truth: np.ndarray, prob: np.ndarray, threshold: float = 0.5) -> dict:
-    pred = (prob >= threshold).astype(np.int64)
-    metrics = _binary_metrics(truth.astype(np.int64), pred)
-    metrics["auroc"] = auroc(truth, prob)
-    metrics["always_distress_f1"] = always_distress_f1(truth)
-    return metrics
+def take(clips: list, speakers: set[str]) -> list:
+    return [clip for clip in clips if clip.speaker in speakers]
 
 
-def _summary(fold_rows: list[dict]) -> dict:
-    out = {}
-    for key in METRICS:
-        values = [row[key] for row in fold_rows if row.get(key) is not None]
-        if values:
-            out[key] = {"mean": round(float(np.mean(values)), 4), "std": round(float(np.std(values)), 4)}
-    return out
+def labels(clips: list) -> np.ndarray:
+    return np.array([clip.label for clip in clips], dtype=np.int64)
 
 
-def _public(metrics: dict) -> dict:
-    keep = (*METRICS, "accuracy", "precision", "tp", "tn", "fp", "fn")
-    return {key: (round(value, 4) if isinstance(value, float) else value) for key, value in metrics.items() if key in keep}
+# One split per call: each returns the choice made on validation speakers plus
+# raw validation and test logits, which calibration.evaluate then scores.
 
 
-def run_cnn(clips: list, plan: list[dict], epochs: int) -> dict:
-    cache: dict[str, torch.Tensor] = {}
-
-    def rows(actors: set[int]) -> list[dict]:
+def split_cnn(train: list, val: list, test: list, cache: dict[str, torch.Tensor], epochs: int) -> dict:
+    def rows(clips: list) -> list[dict]:
         out = []
         for clip in clips:
-            if clip.actor in actors:
-                key = str(clip.path)
-                if key not in cache:
-                    cache[key] = file_to_logmel(key)
-                out.append({"mel": cache[key], "label": clip.label, "clip": clip})
+            key = str(clip.path)
+            if key not in cache:
+                cache[key] = file_to_logmel(key)
+            out.append({"mel": cache[key], "label": clip.label, "clip": clip})
         return out
 
-    per_fold = []
-    for k, split in enumerate(plan, start=1):
-        print(f"\ncnn fold {k}: test actors {sorted(split['test'])}  val {sorted(split['val'])}")
-        test_rows = rows(split["test"])
-        fitted = fit_audio(rows(split["train"]), rows(split["val"]), epochs=epochs)
-        scored = score_audio(fitted["state"], test_rows)
-        scored["always_distress_f1"] = always_distress_f1(np.array([row["label"] for row in test_rows]))
-        per_fold.append(
-            {
-                "fold": k,
-                "test_actors": sorted(split["test"]),
-                "val_actors": sorted(split["val"]),
-                "selected_epoch": fitted["epoch"],
-                "val_balanced_accuracy": round(fitted["val_balanced_accuracy"], 4),
-                "test_clips": len(test_rows),
-                **_public(scored),
-            }
-        )
-    return {"model": "DistressNet audio branch (log-mel CNN)", "epochs": epochs, "folds": per_fold, "summary": _summary(per_fold)}
+    val_rows = rows(val)
+    fitted = fit_audio(rows(train), val_rows, epochs=epochs)
+    return {
+        "selected": {"selected_epoch": fitted["epoch"], "val_balanced_accuracy": round(fitted["val_balanced_accuracy"], 4)},
+        "val_logits": audio_logits(fitted["state"], val_rows),
+        "val_targets": labels(val),
+        "test_logits": audio_logits(fitted["state"], rows(test)),
+    }
 
 
-def _egemaps(paths: list[str], cache_file: Path) -> np.ndarray:
+def egemaps_features(paths: list[str], cache_file: Path) -> np.ndarray:
     import opensmile
 
     cached: dict[str, list[float]] = json.loads(cache_file.read_text()) if cache_file.is_file() else {}
@@ -128,110 +120,190 @@ def _egemaps(paths: list[str], cache_file: Path) -> np.ndarray:
     return np.array([cached[path] for path in paths], dtype=np.float64)
 
 
-def run_egemaps(clips: list, plan: list[dict]) -> dict:
+_egemaps = egemaps_features  # older name, kept for scripts that import it
+
+
+def _stack(clips: list, features: dict[str, np.ndarray]) -> np.ndarray:
+    return np.stack([features[str(clip.path)] for clip in clips])
+
+
+def split_egemaps(train: list, val: list, test: list, features: dict[str, np.ndarray]) -> dict:
     from sklearn.linear_model import LogisticRegression
     from sklearn.pipeline import make_pipeline
     from sklearn.preprocessing import StandardScaler
 
-    paths = [str(clip.path) for clip in clips]
-    features = _egemaps(paths, ARTIFACTS / "egemaps_cache.json")
-    labels = np.array([clip.label for clip in clips])
-    actors = np.array([clip.actor for clip in clips])
+    xt, xv, xs = (_stack(c, features) for c in (train, val, test))
+    yt, yv = labels(train), labels(val)
 
     def model(c: float):
-        return make_pipeline(
-            StandardScaler(),
-            LogisticRegression(C=c, class_weight="balanced", max_iter=5000),
-        )
+        return make_pipeline(StandardScaler(), LogisticRegression(C=c, class_weight="balanced", max_iter=5000))
 
-    per_fold = []
-    for k, split in enumerate(plan, start=1):
-        train = np.isin(actors, list(split["train"]))
-        val = np.isin(actors, list(split["val"]))
-        test = np.isin(actors, list(split["test"]))
-        best_c, best_score = C_GRID[0], -1.0
-        for c in C_GRID:
-            fitted = model(c).fit(features[train], labels[train])
-            score = _scored(labels[val], fitted.predict_proba(features[val])[:, 1])["balanced_accuracy"]
-            if score > best_score:
-                best_c, best_score = c, score
-        fitted = model(best_c).fit(features[train], labels[train])
-        scored = _scored(labels[test], fitted.predict_proba(features[test])[:, 1])
-        print(f"egemaps fold {k}: C {best_c}  val bal {best_score:.3f}  test bal {scored['balanced_accuracy']:.3f}")
-        per_fold.append(
-            {
-                "fold": k,
-                "test_actors": sorted(split["test"]),
-                "val_actors": sorted(split["val"]),
-                "selected_c": best_c,
-                "val_balanced_accuracy": round(best_score, 4),
-                "test_clips": int(test.sum()),
-                **_public(scored),
-            }
-        )
+    best_c, best_score = C_GRID[0], -1.0
+    for c in C_GRID:
+        score = calibration.metrics_at(yv, model(c).fit(xt, yt).predict_proba(xv)[:, 1], 0.5)["balanced_accuracy"]
+        if score > best_score:
+            best_c, best_score = c, score
+    fitted = model(best_c).fit(xt, yt)
     return {
-        "model": "eGeMAPS v02 functionals + logistic regression (balanced class weights)",
-        "folds": per_fold,
-        "summary": _summary(per_fold),
+        "selected": {"selected_c": best_c, "val_balanced_accuracy": round(best_score, 4)},
+        "val_logits": fitted.decision_function(xv),
+        "val_targets": yv,
+        "test_logits": fitted.decision_function(xs),
     }
+
+
+def split_ssl(train: list, val: list, test: list, features: dict[str, np.ndarray], head: str = DEFAULT_HEAD, epochs: int = HEAD_EPOCHS) -> dict:
+    fitted = fit_head(_stack(train, features), targets(train, head), _stack(val, features), targets(val, head), epochs=epochs, head=head)
+    return {
+        "selected": {
+            "selected_epoch": fitted["epoch"],
+            "val_balanced_accuracy": round(fitted["val_balanced_accuracy"], 4),
+            "layer_weights": fitted["layer_weights"],
+        },
+        "val_logits": predict_logits(fitted, _stack(val, features)),
+        "val_targets": targets(val, head),
+        "test_logits": predict_logits(fitted, _stack(test, features)),
+        "fitted": fitted,
+    }
+
+
+def score_split(out: dict, test: list) -> dict:
+    """Calibrate on validation and score the test speakers once."""
+    scored = calibration.evaluate(out["val_logits"], out["val_targets"], out["test_logits"], labels(test))
+    scored["selected"] = out["selected"]
+    return scored
+
+
+def _round(metrics: dict) -> dict:
+    keep = (*METRICS, "accuracy", "precision", "beats_always_distress", "tp", "tn", "fp", "fn")
+    return {key: (round(value, 4) if isinstance(value, float) else value) for key, value in metrics.items() if key in keep and value is not None}
+
+
+def _fold_row(k: int, split: dict, test: list, scored: dict) -> dict:
+    return {
+        "fold": k,
+        "test_speakers": sorted(split["test"]),
+        "val_speakers": sorted(split["val"]),
+        **scored["selected"],
+        "test_clips": len(test),
+        **_round(scored["raw"]),
+        "temperature": scored["temperature"],
+        "threshold": scored["threshold"],
+        "calibrated": _round(scored["calibrated"]),
+    }
+
+
+def _summary(rows: list[dict]) -> dict:
+    out = {}
+    for key in METRICS:
+        values = [row[key] for row in rows if row.get(key) is not None]
+        if values:
+            out[key] = {"mean": round(float(np.mean(values)), 4), "std": round(float(np.std(values)), 4)}
+    out["beats_always_distress_folds"] = f"{sum(bool(row.get('beats_always_distress')) for row in rows)}/{len(rows)}"
+    return out
+
+
+def _result(model: str, fold_rows: list[dict], **extra) -> dict:
+    return {
+        "model": model,
+        **extra,
+        "folds": fold_rows,
+        "summary": _summary(fold_rows),
+        "summary_calibrated": _summary([row["calibrated"] for row in fold_rows]),
+    }
+
+
+def run_cnn(clips: list, plan: list[dict], epochs: int) -> dict:
+    cache: dict[str, torch.Tensor] = {}
+    rows = []
+    for k, split in enumerate(plan, start=1):
+        print(f"\ncnn fold {k}: test {sorted(split['test'])}  val {sorted(split['val'])}")
+        test = take(clips, split["test"])
+        scored = score_split(split_cnn(take(clips, split["train"]), take(clips, split["val"]), test, cache, epochs), test)
+        rows.append(_fold_row(k, split, test, scored))
+    return _result("DistressNet audio branch (log-mel CNN)", rows, epochs=epochs)
+
+
+def run_egemaps(clips: list, plan: list[dict]) -> dict:
+    paths = [str(clip.path) for clip in clips]
+    features = dict(zip(paths, egemaps_features(paths, ARTIFACTS / "egemaps_cache.json")))
+    rows = []
+    for k, split in enumerate(plan, start=1):
+        test = take(clips, split["test"])
+        scored = score_split(split_egemaps(take(clips, split["train"]), take(clips, split["val"]), test, features), test)
+        print(f"egemaps fold {k}: C {scored['selected']['selected_c']}  test bal {scored['raw']['balanced_accuracy']:.3f}  calibrated {scored['calibrated']['balanced_accuracy']:.3f}")
+        rows.append(_fold_row(k, split, test, scored))
+    return _result("eGeMAPS v02 functionals + logistic regression (balanced class weights)", rows)
 
 
 def encoder_key(encoder: str) -> str:
     return "wavlm" if "wavlm" in encoder.lower() else "wav2vec2"
 
 
-def run_ssl(clips: list, plan: list[dict], encoder: str, epochs: int = HEAD_EPOCHS) -> dict:
+def model_key(encoder: str, head: str = DEFAULT_HEAD) -> str:
+    return encoder_key(encoder) + ("" if head == DEFAULT_HEAD else f"/{head}")
+
+
+def run_ssl(clips: list, plan: list[dict], encoder: str, head: str = DEFAULT_HEAD, epochs: int = HEAD_EPOCHS) -> dict:
     paths = [str(clip.path) for clip in clips]
-    cache = ARTIFACTS / "ssl_cache" / f"{encoder.replace('/', '__')}.npz"
-    features = embed_clips(paths, encoder, cache)
-    labels = np.array([clip.label for clip in clips])
-    actors = np.array([clip.actor for clip in clips])
-    name = encoder_key(encoder)
-
-    per_fold = []
+    features = dict(zip(paths, embed_clips(paths, encoder, cache_path(ARTIFACTS, encoder))))
+    name = model_key(encoder, head)
+    rows = []
     for k, split in enumerate(plan, start=1):
-        train = np.isin(actors, list(split["train"]))
-        val = np.isin(actors, list(split["val"]))
-        test = np.isin(actors, list(split["test"]))
-        fitted = fit_head(features[train], labels[train], features[val], labels[val], epochs=epochs)
-        scored = _scored(labels[test], predict(fitted, features[test]))
-        top = int(np.argmax(fitted["layer_weights"]))
+        test = take(clips, split["test"])
+        scored = score_split(split_ssl(take(clips, split["train"]), take(clips, split["val"]), test, features, head, epochs), test)
+        top = int(np.argmax(scored["selected"]["layer_weights"]))
         print(
-            f"{name} fold {k}: epoch {fitted['epoch']}  val bal {fitted['val_balanced_accuracy']:.3f}  "
-            f"test bal {scored['balanced_accuracy']:.3f}  heaviest layer {top}"
+            f"{name} fold {k}: epoch {scored['selected']['selected_epoch']}  test bal {scored['raw']['balanced_accuracy']:.3f}  "
+            f"calibrated {scored['calibrated']['balanced_accuracy']:.3f}  T {scored['temperature']:.2f}  heaviest layer {top}"
         )
-        per_fold.append(
-            {
-                "fold": k,
-                "test_actors": sorted(split["test"]),
-                "val_actors": sorted(split["val"]),
-                "selected_epoch": fitted["epoch"],
-                "val_balanced_accuracy": round(fitted["val_balanced_accuracy"], 4),
-                "layer_weights": fitted["layer_weights"],
-                "test_clips": int(test.sum()),
-                **_public(scored),
-            }
-        )
-    return {
-        "model": f"{encoder} (frozen), mean-pooled hidden layers, learned layer weights + MLP head",
-        "encoder": encoder,
-        "epochs": epochs,
-        "folds": per_fold,
-        "summary": _summary(per_fold),
-    }
+        rows.append(_fold_row(k, split, test, scored))
+    pool = HEADS[head]["pool"]
+    classes = HEADS[head]["classes"]
+    return _result(
+        f"{encoder} (frozen), learned layer weights, {pool} pooling, {classes}-class head",
+        rows,
+        encoder=encoder,
+        head=head,
+        epochs=epochs,
+    )
 
 
-def run(only: str | None = None, epochs: int = EPOCHS, encoder: str = DEFAULT_ENCODER) -> dict:
+def paired_tests(models: dict) -> list[dict]:
+    """Every pair of models on the same folds, on raw and calibrated balanced accuracy."""
+    out = []
+    for a, b in itertools.combinations(sorted(models), 2):
+        fa, fb = models[a]["folds"], models[b]["folds"]
+        if any("calibrated" not in f for f in fa + fb):
+            continue  # a result from before calibration was added
+        if [f["test_speakers"] for f in fa] != [f["test_speakers"] for f in fb]:
+            continue
+        for block in ("raw", "calibrated"):
+            pick = (lambda f: f["balanced_accuracy"]) if block == "raw" else (lambda f: f["calibrated"]["balanced_accuracy"])
+            out.append({"a": a, "b": b, "scores": block, "metric": "balanced_accuracy", **paired([pick(f) for f in fa], [pick(f) for f in fb])})
+    return out
+
+
+def run(
+    only: str | None = None,
+    epochs: int = EPOCHS,
+    encoder: str = DEFAULT_ENCODER,
+    corpus: str = "ravdess",
+    head: str = DEFAULT_HEAD,
+) -> dict:
     random.seed(SEED)
     np.random.seed(SEED)
     torch.manual_seed(SEED)
-    clips = discover(DATA_ROOT)
-    found = sorted({clip.actor for clip in clips})
-    if found != sorted(ALL_ACTORS):
-        raise SystemExit(f"Cross-validation needs RAVDESS actors 01–24 under {DATA_ROOT}; found {found}")
-    plan = folds()
+    spec = CORPORA[corpus]
+    clips = discover(spec["root"], spec["name"])
+    speakers = sorted({clip.speaker for clip in clips})
+    if corpus == "ravdess" and speakers != [f"{a:02d}" for a in range(1, 25)]:
+        raise SystemExit(f"Cross-validation needs RAVDESS actors 01–24 under {spec['root']}; found {speakers}")
+    if not clips:
+        raise SystemExit(f"No {spec['name']} clips under {spec['root']}")
+    plan = folds(speakers, spec["folds"], spec["val"], spec["shuffle"])
     report = {
-        "dataset": "RAVDESS speech audio, actors 01–24",
+        "dataset": f"{spec['name']} speech audio, {len(speakers)} speakers, {len(clips)} clips",
         "seed": SEED,
         "label": {
             "distress": ["sad", "angry", "fearful"],
@@ -239,9 +311,10 @@ def run(only: str | None = None, epochs: int = EPOCHS, encoder: str = DEFAULT_EN
             "excluded": ["happy", "surprised", "disgust", "song"],
         },
         "protocol": (
-            "Six folds of four actors. Each fold tests on four actors, chooses the epoch or C on the next four "
-            "by balanced accuracy, and trains on the remaining sixteen. Threshold 0.5. "
-            "Values are mean and standard deviation over the six test folds."
+            f"{spec['folds']} folds by speaker. Each fold tests on one block of speakers, uses {spec['val']} speakers "
+            "from the next block to choose the epoch or C, the calibration temperature and the decision threshold, "
+            "and trains on the rest. 'summary' is raw (threshold 0.5, uncalibrated); 'summary_calibrated' uses the "
+            "validation temperature and threshold. Values are mean and standard deviation over the test folds."
         ),
         "folds": [{key: sorted(value) for key, value in split.items()} for split in plan],
         "models": {},
@@ -251,29 +324,37 @@ def run(only: str | None = None, epochs: int = EPOCHS, encoder: str = DEFAULT_EN
     if only in (None, "egemaps"):
         report["models"]["egemaps"] = run_egemaps(clips, plan)
     if only in (None, "wavlm"):
-        report["models"][encoder_key(encoder)] = run_ssl(clips, plan, encoder)
+        report["models"][model_key(encoder, head)] = run_ssl(clips, plan, encoder, head)
 
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
-    out = ARTIFACTS / "cv_report.json"
+    out = ARTIFACTS / spec["report"]
     if only is not None and out.is_file():
         previous = json.loads(out.read_text())
         report["models"] = {**previous.get("models", {}), **report["models"]}
+    report["paired_tests"] = paired_tests(report["models"])
     out.write_text(json.dumps(report, indent=2))
 
-    print("\nmodel     " + "  ".join(f"{key:>20}" for key in METRICS))
-    for name, result in report["models"].items():
-        cells = []
-        for key in METRICS:
-            stat = result["summary"].get(key)
-            cells.append(f"{stat['mean']:.3f} ± {stat['std']:.3f}".rjust(20) if stat else "-".rjust(20))
-        print(f"{name:<9} " + "  ".join(cells))
+    for title, key in (("raw, threshold 0.5", "summary"), ("calibrated, validation threshold", "summary_calibrated")):
+        print(f"\n{spec['name']}, {title}")
+        print("model".ljust(22) + "".join(f"{m:>20}" for m in METRICS))
+        for name, result in report["models"].items():
+            cells = []
+            for metric in METRICS:
+                stat = result.get(key, {}).get(metric)
+                cells.append(f"{stat['mean']:.3f} ± {stat['std']:.3f}".rjust(20) if stat else "-".rjust(20))
+            print(f"{name:<22}" + "".join(cells))
+    for test in report["paired_tests"]:
+        if test["scores"] == "calibrated":
+            print(f"{test['a']} vs {test['b']}: diff {test['mean_difference']:+.3f}  t p={test['t_test_p']}  wilcoxon p={test['wilcoxon_p']}")
     return report
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--corpus", choices=sorted(CORPORA), default="ravdess")
     parser.add_argument("--only", choices=("cnn", "egemaps", "wavlm"))
     parser.add_argument("--epochs", type=int, default=EPOCHS, help="CNN epochs")
     parser.add_argument("--encoder", default=DEFAULT_ENCODER, help="Hugging Face id of the pretrained speech encoder")
+    parser.add_argument("--head", choices=sorted(HEADS), default=DEFAULT_HEAD, help="WavLM head")
     args = parser.parse_args()
-    run(args.only, args.epochs, args.encoder)
+    run(args.only, args.epochs, args.encoder, args.corpus, args.head)

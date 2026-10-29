@@ -1,168 +1,145 @@
-"""Combine the voice network and the language reading.
+"""Combine the voice reading and the words reading into one of three bands.
 
-The live judge is a language model that sees both opinions. A written floor
-sits under it: clear distress in either opinion is never flipped to calm.
-The cross-corpus check keeps using decide(), the written floor alone.
+  calm      the conversation continues normally
+  check-in  the reading is uncertain, so the assistant asks one gentle question
+  support   the reading is clearly distressed, so the full support flow starts
+
+Each side is banded on its own calibrated probability, and the judge takes the
+higher band. That is the floor the prototype already had, now with a middle
+band: distress from either side is never overruled to calm, and an uncertain
+reading from either side is never dropped. The voice side is banded around the
+threshold chosen on validation speakers, so a clip at that threshold or above
+is support and one just under it is a check-in.
+
+The crisis screen runs before the bands. High risk bypasses the judge and the
+assistant gives the 988 referral. Concern starts the support flow with a
+safety question.
 """
 
 from __future__ import annotations
 
-import re
-
-from .llm import complete, parse_json
+from .safety import RISK_ORDER, screen
 
 CRISIS_CARE = (
-    "I'm glad you said that out loud. I can't help in a crisis. "
-    "In the US, call or text 988. If you are elsewhere, contact local emergency services or someone who is with you."
+    "I'm really glad you told me. I'm not able to help with this on my own, and you deserve support from a person right now. "
+    "In the US, call or text 988 to reach the Suicide and Crisis Lifeline, any time. "
+    "If you are somewhere else, contact local emergency services, or reach out to someone near you."
 )
+
+BANDS = ("calm", "check-in", "support")
+VOICE_CHECK_MARGIN = 0.15  # below the voice threshold by up to this much is a check-in
+WORDS_SUPPORT_AT = 0.6
+WORDS_CHECK_AT = 0.45
 
 
 def is_crisis(text: str) -> bool:
-    lowered = text.lower()
-    return any(
-        re.search(rf"\b{re.escape(phrase)}\b", lowered)
-        for phrase in ("suicide", "kill myself", "want to die", "end my life", "hurt myself")
-    )
+    """Keyword floor only, without a model call."""
+    return screen(text, allow_model=False)["risk"] == "high"
 
 
-def decide(voice_probability: float | None, language: dict, transcript: str) -> dict:
+def voice_band(probability: float | None, threshold: float = 0.5) -> str | None:
+    if probability is None:
+        return None
+    if probability >= threshold:
+        return "support"
+    if probability >= threshold - VOICE_CHECK_MARGIN:
+        return "check-in"
+    return "calm"
+
+
+def words_band(probability: float | None) -> str | None:
+    if probability is None:
+        return None
+    if probability >= WORDS_SUPPORT_AT:
+        return "support"
+    if probability >= WORDS_CHECK_AT:
+        return "check-in"
+    return "calm"
+
+
+def _higher(*bands: str | None) -> str:
+    present = [band for band in bands if band]
+    return max(present, key=BANDS.index) if present else "calm"
+
+
+QUESTIONS = {
+    "check-in": "How are you doing right now, honestly?",
+    "support": "It sounds like things might be hard right now. Do you want to tell me what's going on?",
+    "concern": (
+        "I want to check on something, because what you said matters to me. "
+        "Are you thinking about hurting yourself or not wanting to be alive?"
+    ),
+}
+
+
+def decide(
+    voice_probability: float | None,
+    language: dict,
+    transcript: str,
+    *,
+    voice_threshold: float = 0.5,
+    risk: dict | None = None,
+) -> dict:
+    """The written rule. No model call except the optional risk screen passed in."""
     words = transcript.strip()
-    lang_probability = language.get("probability")
-    voice_distress = voice_probability is not None and voice_probability >= 0.5
-    words_distress = lang_probability is not None and lang_probability >= 0.6
+    lang_probability = language.get("probability") if words else None
+    vb = voice_band(voice_probability, voice_threshold)
+    wb = words_band(lang_probability)
+    band = _higher(vb, wb)
+    level = (risk or {}).get("risk", "none")
 
-    if not words or lang_probability is None:
-        probability = voice_probability if voice_probability is not None else 0.5
-        decision = "distress" if probability >= 0.5 else "calm"
+    if level == "high":
         return {
-            "decision": decision,
-            "confidence": round(probability if decision == "distress" else 1 - probability, 4),
-            "reason": "Only the voice network ran. No words were available.",
-            "ask": False,
-            "question": "",
+            "band": "crisis",
+            "decision": "distress",
+            "confidence": 1.0,
+            "reason": "The words describe a crisis, so the judge is bypassed and the assistant points to help.",
+            "ask": True,
+            "question": CRISIS_CARE,
+            "risk": level,
+            "voice_band": vb,
+            "words_band": wb,
+            "source": "safety",
         }
 
-    if words_distress and voice_probability is None:
-        decision = "distress"
-        reason = "No voice clip was attached. The words mark distress, so the judge follows the words."
-    elif words_distress and not voice_distress:
-        decision = "distress"
-        reason = (
-            "The neural network heard a calm voice. The language reading still marks distress "
-            "because of what was said. Speaking softly does not cancel that."
-        )
-    elif voice_distress and words_distress:
-        decision = "distress"
-        reason = "The voice network and the words agree. Both point to distress."
-    elif voice_distress and not words_distress:
-        decision = "distress"
-        reason = (
-            "The voice network heard distress, and the words did not clearly say so. "
-            "The judge keeps that voice result and asks, instead of waving it off."
-        )
+    if level == "concern":
+        band = "support"
+    if vb is None and wb is None:
+        reason = "Nothing was read: no clip and no words."
+    elif vb is None:
+        reason = f"Only the words were read; they fall in the {wb} band."
+    elif wb is None:
+        reason = f"Only the voice was read; it falls in the {vb} band."
+    elif vb == wb:
+        reason = f"The voice and the words agree on {vb}."
     else:
-        decision = "calm"
-        if voice_probability is None:
-            reason = "No voice clip was attached, and the words do not describe distress."
-        else:
-            reason = "The voice sounds calm, and the words do not describe distress."
+        reason = f"The voice reads {vb} and the words read {wb}; the judge keeps the higher band, {band}."
+    if level == "concern":
+        reason += " The crisis screen found possible indirect risk, so the assistant asks about safety."
 
-    ask = decision == "distress"
-    question = ""
-    if ask:
-        soft = (
-            "Your voice sounded calm, but the words matter. "
-            if words_distress and voice_probability is not None and voice_probability < 0.5
-            else ""
-        )
-        question = f'I caught “{words}”. {soft}What is going on?'
-
-    strength = max(voice_probability or 0, lang_probability or 0)
-    confidence = strength if decision == "distress" else 1 - strength
+    strength = max(p for p in (voice_probability, lang_probability, 0.0) if p is not None)
+    ask = band != "calm"
+    question = QUESTIONS["concern"] if level == "concern" else QUESTIONS.get(band, "")
     return {
-        "decision": decision,
-        "confidence": round(confidence, 4),
+        "band": band,
+        "decision": "calm" if band == "calm" else "distress",
+        "confidence": round(strength if ask else 1 - strength, 4),
         "reason": reason,
         "ask": ask,
         "question": question,
+        "risk": level,
+        "voice_band": vb,
+        "words_band": wb,
         "source": "policy",
     }
 
 
-def adjudicate(voice_probability: float | None, language: dict, transcript: str) -> dict:
-    words = transcript.strip()
-    if is_crisis(words):
-        return {
-            "decision": "distress",
-            "confidence": 1.0,
-            "reason": "The words describe a crisis. The assistant stops and points to help.",
-            "ask": True,
-            "question": CRISIS_CARE,
-            "source": "safety",
-        }
+def adjudicate(voice_probability: float | None, language: dict, transcript: str, *, voice_threshold: float = 0.5) -> dict:
+    """The live judge: crisis screen (keyword floor and risk model), then the bands."""
+    risk = screen(transcript) if transcript.strip() else {"risk": "none", "source": "", "layers": []}
+    verdict = decide(voice_probability, language, transcript, voice_threshold=voice_threshold, risk=risk)
+    verdict["risk_source"] = risk.get("source", "")
+    return verdict
 
-    floor = decide(voice_probability, language, transcript)
-    if not words or language.get("probability") is None:
-        floor["source"] = "voice network"
-        return floor
 
-    voice_label = "not run"
-    if voice_probability is not None:
-        voice_label = "distress" if voice_probability >= 0.5 else "calm"
-    raw = complete(
-        [
-            {
-                "role": "system",
-                "content": (
-                    "You are the judge between two opinions. "
-                    "A neural network scored the voice. A language model scored the words. "
-                    "If either opinion is distress, your decision must be distress. "
-                    "A calm voice does not cancel distress in the words. "
-                    "Distress in the voice is kept even when the words sound calm. "
-                    "If you decide distress, ask what is going on, in one sentence, so a person can say what is wrong. "
-                    "Do not diagnose, name a disorder, or give medical advice. "
-                    'Return JSON with keys decision ("distress" or "calm"), confidence (0 to 1), '
-                    "reason (one or two sentences that name both opinions), and question (empty when calm)."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"Transcript: {words}\n"
-                    f"Voice network: {voice_label}"
-                    + (f", probability {voice_probability:.2f}" if voice_probability is not None else "")
-                    + f"\nLanguage model: {language.get('label')}, probability {language.get('probability')}. "
-                    f"{language.get('note', '')}"
-                ),
-            },
-        ],
-        json_mode=True,
-    )
-    parsed = parse_json(raw or "")
-    if not parsed:
-        return floor
-
-    decision = "distress" if str(parsed.get("decision", "")).lower() == "distress" else "calm"
-    try:
-        confidence = float(parsed.get("confidence", floor["confidence"]))
-    except (TypeError, ValueError):
-        confidence = floor["confidence"]
-    confidence = min(1.0, max(0.0, confidence))
-    if floor["decision"] == "distress":
-        decision = "distress"
-        confidence = max(confidence, float(floor["confidence"]))
-    reason = str(parsed.get("reason", "")).strip() or floor["reason"]
-    ask = decision == "distress"
-    question = ""
-    if ask:
-        question = str(parsed.get("question", "")).strip() or floor["question"]
-        if is_crisis(question):
-            question = floor["question"] or f"I caught “{words}”. What is going on?"
-    return {
-        "decision": decision,
-        "confidence": round(confidence, 4),
-        "reason": reason,
-        "ask": ask,
-        "question": question,
-        "source": "judge model",
-    }
+__all__ = ["BANDS", "CRISIS_CARE", "RISK_ORDER", "adjudicate", "decide", "is_crisis", "voice_band", "words_band"]

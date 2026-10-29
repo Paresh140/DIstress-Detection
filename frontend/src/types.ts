@@ -5,9 +5,18 @@ export type Signal = {
   source?: string;
   evidence?: string;
   note?: string;
+  threshold?: number;
+  model?: string;
+  classes?: Record<string, number>;
 };
 
+export type Band = "calm" | "check-in" | "support" | "crisis";
+
 export type Judge = {
+  band?: Band;
+  risk?: "none" | "concern" | "high";
+  voice_band?: string | null;
+  words_band?: string | null;
   decision: "distress" | "calm";
   confidence: number;
   reason: string;
@@ -23,7 +32,9 @@ export type Analysis = {
   logit: number;
   threshold: number;
   modality: string;
+  band?: Band;
   transcript?: string;
+  speech_to_text?: { text: string; model: string; duration: number } | null;
   voice?: Signal;
   language?: Signal;
   judge?: Judge;

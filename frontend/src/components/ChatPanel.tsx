@@ -22,6 +22,8 @@ export function ChatPanel({ analysis }: { analysis: Analysis | null }) {
   const field = useRef<HTMLInputElement>(null);
   const asked = useRef("");
   const [noticed, setNoticed] = useState("");
+  // The support conversation's state (step, risk, what was shared). The server owns it; we only carry it.
+  const support = useRef<Record<string, unknown> | null>(null);
 
   const question = analysis?.judge?.ask ? analysis.judge.question : "";
   const waiting = Boolean(question && noticed !== question);
@@ -48,12 +50,18 @@ export function ChatPanel({ analysis }: { analysis: Analysis | null }) {
   useEffect(() => {
     if (analysis?.judge?.ask && question && asked.current !== question) {
       asked.current = question;
+      support.current = null;
       setMessages((current) => [...current, { role: "assistant", text: question }]);
-      setPrompts(["I have had a hard day", "My body feels wrong", "Why did you call this distress?"]);
+      setPrompts(
+        analysis.judge.band === "check-in"
+          ? ["I'm okay, thanks", "Not great, honestly", "Why are you asking?"]
+          : ["I have had a hard day", "My body feels wrong", "Why did you call this distress?"],
+      );
       setOpen(true);
       return;
     }
     if (analysis && !analysis.judge?.ask) {
+      support.current = null;
       setPrompts(["Explain this reading", "How was the network trained?", "What did the model get wrong?", "What are the limits?"]);
     }
   }, [analysis, question]);
@@ -67,7 +75,8 @@ export function ChatPanel({ analysis }: { analysis: Analysis | null }) {
     setMessages((current) => [...current, { role: "user", text: message }]);
     setBusy(true);
     try {
-      const result = await sendChat(message, analysis, prior);
+      const result = await sendChat(message, analysis, prior, support.current);
+      support.current = result.state;
       setMessages((current) => [...current, { role: "assistant", text: result.reply }]);
       setPrompts(result.prompts);
     } catch (error) {

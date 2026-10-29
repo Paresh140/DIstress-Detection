@@ -79,15 +79,15 @@ export function NetworkView({ analysis }: { analysis: Analysis | null }) {
             {snap && spec.best_epoch === snap.epoch ? " · best checkpoint" : ""}
           </p>
           <p className="metric-kicker">Held-out accuracy</p>
-          <p className="epoch-num">{snap ? snap.test_accuracy.toFixed(2) : "—"}</p>
+          <p className="epoch-num">{snap?.test_accuracy != null ? snap.test_accuracy.toFixed(2) : "—"}</p>
           <dl className="readout-metrics">
             <div>
               <dt>Precision</dt>
-              <dd>{snap ? snap.test_precision.toFixed(2) : "—"}</dd>
+              <dd>{snap?.test_precision != null ? snap.test_precision.toFixed(2) : "—"}</dd>
             </div>
             <div>
               <dt>Recall</dt>
-              <dd>{snap ? snap.test_recall.toFixed(2) : "—"}</dd>
+              <dd>{snap?.test_recall != null ? snap.test_recall.toFixed(2) : "—"}</dd>
             </div>
             <div>
               <dt>F1</dt>
@@ -95,7 +95,7 @@ export function NetworkView({ analysis }: { analysis: Analysis | null }) {
             </div>
             <div>
               <dt>Loss</dt>
-              <dd>{snap ? snap.test_loss.toFixed(3) : "—"}</dd>
+              <dd>{snap?.test_loss != null ? snap.test_loss.toFixed(3) : "—"}</dd>
             </div>
           </dl>
           {spec.best ? (
@@ -149,8 +149,9 @@ export function NetworkView({ analysis }: { analysis: Analysis | null }) {
         />
       </div>
       <p className="fine train-note">
-        Pale dots are the forward pass. Clay dots are the backward pass. Replay walks the 16 real epochs. Vision and
-        fusion were not updated in this run.
+        Pale dots are the forward pass. Clay dots are the backward pass. Replay walks the 16 real epochs. A vision
+        branch and a fusion head were sketched early on; they were never trained and are future work, so they are not
+        part of this model.
       </p>
     </section>
   );
