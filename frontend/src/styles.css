@@ -144,6 +144,8 @@ footer { margin-top: 28px; color: var(--muted); font-size: 0.85rem; }
 .signals { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 4px; }
 .signals b { text-transform: capitalize; }
 .sample-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.enroll { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.enroll .fine { flex-basis: 100%; margin: 0; }
 .sample-row button, .chips button {
   background: transparent;
   border: 1px solid var(--line);

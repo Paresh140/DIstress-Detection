@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { analyzeClip, analyzeUpload, analyzeWords, clipUrl, getSamples } from "../api";
+import { addEnroll, analyzeClip, analyzeUpload, analyzeWords, clipUrl, getEnroll, getSamples, resetEnroll } from "../api";
+import type { EnrollStatus } from "../api";
 import type { Analysis, Sample } from "../types";
 
 const MAX_RECORD_SECONDS = 8;
@@ -125,9 +126,11 @@ export function Monitor({
   const [recordedFile, setRecordedFile] = useState<File | null>(null);
   const [recordedUrl, setRecordedUrl] = useState("");
   const [transcript, setTranscript] = useState("");
+  const [enroll, setEnroll] = useState<EnrollStatus | null>(null);
 
   useEffect(() => {
     getSamples().then(setSamples).catch(() => setSamples([]));
+    getEnroll().then(setEnroll).catch(() => setEnroll(null));
     return () => releaseMic();
   }, []);
 
@@ -247,6 +250,18 @@ export function Monitor({
     }
   }
 
+  async function enrollCalm(task: () => Promise<EnrollStatus>) {
+    setBusy(true);
+    setError("");
+    try {
+      setEnroll(await task());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save that calm reading.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section className="monitor">
       <header className="page-head">
@@ -311,6 +326,27 @@ export function Monitor({
           {recordedFile && !recording ? (
             <p className="fine">Recording ready, {formatClock(elapsed)}. Press Detect distress.</p>
           ) : null}
+          {enroll?.available ? (
+            <div className="enroll">
+              <p className="fine">
+                {enroll.active
+                  ? "Calm enrollment is on: your voice is compared with your own calm readings."
+                  : `Calm enrollment: ${enroll.clips} of ${enroll.needed} readings. Read a sentence calmly, then save it as a calm reading.`}
+              </p>
+              <button
+                type="button"
+                disabled={!recordedFile || recording || busy}
+                onClick={() => recordedFile && void enrollCalm(() => addEnroll(recordedFile))}
+              >
+                Save as calm reading
+              </button>
+              {enroll.clips > 0 ? (
+                <button type="button" disabled={busy} onClick={() => void enrollCalm(resetEnroll)}>
+                  Reset
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <label className="file-btn">
             Choose wav
             <input
@@ -350,7 +386,8 @@ export function Monitor({
                 <ul className="signals">
                   {analysis.voice?.probability != null ? (
                     <li>
-                      {analysis.voice.model?.includes("wavlm") ? "WavLM voice" : "Voice network"}{" "}
+                      {analysis.voice.model?.includes("wavlm") ? "WavLM voice" : "Voice network"}
+                      {analysis.voice.enrolled ? ", against your calm readings" : ""}{" "}
                       <b>{analysis.judge?.voice_band ?? analysis.voice.label}</b> {analysis.voice.probability.toFixed(2)}
                       {analysis.voice.threshold != null ? ` (threshold ${analysis.voice.threshold.toFixed(2)})` : ""}
                     </li>

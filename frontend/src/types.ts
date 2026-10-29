@@ -7,6 +7,7 @@ export type Signal = {
   note?: string;
   threshold?: number;
   model?: string;
+  enrolled?: boolean;
   classes?: Record<string, number>;
 };
 

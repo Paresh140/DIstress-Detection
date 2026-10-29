@@ -99,6 +99,22 @@ def _voice_model() -> VoiceModel | None:
     return _voice
 
 
+# Calm enrollment for the current speaker: pooled WavLM features of a few calm
+# readings, held in memory only and cleared by DELETE /api/enroll.
+_enrollment: list[np.ndarray] = []
+
+
+def _enroll_status() -> dict:
+    wavlm = _voice_model()
+    needed = wavlm.enroll_clips if wavlm is not None else 0
+    return {
+        "available": bool(wavlm is not None and wavlm.enrolled is not None),
+        "clips": len(_enrollment),
+        "needed": needed,
+        "active": bool(wavlm is not None and wavlm.enrolled is not None and len(_enrollment) >= needed),
+    }
+
+
 def _report() -> dict | None:
     path = _report_path()
     if not path.exists():
@@ -130,10 +146,10 @@ def _predict(path: Path | None, transcript: str = "") -> dict:
         spec = np.round(mel.numpy(), 3).tolist()
         wavlm = _voice_model()
         if wavlm is not None:
-            scored = wavlm.score(str(path))
+            scored = wavlm.score(str(path), _enrollment)
             voice_probability = scored["probability"]
             voice_threshold = scored["threshold"]
-            voice_extra = {key: scored[key] for key in ("model", "classes", "time_weights", "layer_weights") if key in scored}
+            voice_extra = {key: scored[key] for key in ("model", "enrolled", "classes", "time_weights", "layer_weights") if key in scored}
         else:
             if not _weights().exists():
                 raise HTTPException(status_code=409, detail="No voice model is trained yet.")
@@ -574,6 +590,39 @@ async def analyze_upload_file(file: UploadFile = File(...), transcript: str = Fo
         raise HTTPException(status_code=400, detail=f"Could not read that clip. {exc}") from exc
     result["file"] = file.filename
     return result
+
+
+@app.get("/api/enroll")
+def enroll_status():
+    return _enroll_status()
+
+
+@app.post("/api/enroll")
+async def enroll(file: UploadFile = File(...)):
+    wavlm = _voice_model()
+    if wavlm is None or wavlm.enrolled is None:
+        raise HTTPException(status_code=409, detail="Calm enrollment needs the WavLM voice model with an enrolled head.")
+    data = await file.read()
+    if len(data) > 12_000_000:
+        raise HTTPException(status_code=400, detail="Clip is too large.")
+    tmp = ARTIFACTS / "_enroll.wav"
+    ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    tmp.write_bytes(data)
+    try:
+        feats = wavlm.features(str(tmp))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=f"Could not read that clip. {exc}") from exc
+    finally:
+        tmp.unlink(missing_ok=True)
+    _enrollment.append(feats)
+    del _enrollment[: -max(wavlm.enroll_clips, 1)]  # keep the most recent readings only
+    return _enroll_status()
+
+
+@app.delete("/api/enroll")
+def enroll_reset():
+    _enrollment.clear()
+    return _enroll_status()
 
 
 @app.post("/api/chat")

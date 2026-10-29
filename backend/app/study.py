@@ -14,7 +14,9 @@ Usage, from backend/:
 
 --norm standardizes the eGeMAPS and WavLM features of each corpus (corpus) or
 each speaker (speaker) with that group's own mean and std before the model sees
-them. It uses no labels, only unlabeled audio from the same group, and removes
+them. --norm neutral instead shifts each speaker by the mean of two of their own
+neutral clips, which is what a live user can give as a short calm enrollment;
+those clips are left out of every split (app/enrollment.py). It uses no labels, only unlabeled audio from the same group, and removes
 the offset between recording setups that otherwise shifts every score across
 corpora. The CNN is not affected.
 
@@ -43,6 +45,7 @@ from .language import read_language
 from .model import DistressNet
 from .cv import egemaps_features, labels, model_key, score_split, split_cnn, split_egemaps, split_ssl
 from .speech_encoder import DEFAULT_ENCODER, DEFAULT_HEAD, HEADS, cache_path, embed_clips
+from .enrollment import drop, enrollment_paths, neutral_shift
 from .stats import speaker_bootstrap
 from .train import device
 
@@ -128,6 +131,8 @@ def _normalize(features: dict[str, np.ndarray], clips: list, how: str) -> dict[s
     """Standardize each corpus or speaker with its own statistics (over clips, and time bins for WavLM)."""
     if how == "none":
         return features
+    if how == "neutral":
+        return neutral_shift(features, clips, enrollment_paths(clips))
     groups: dict[tuple, list[str]] = {}
     for clip in clips:
         key = (clip.corpus,) if how == "corpus" else (clip.corpus, clip.speaker)
@@ -139,6 +144,14 @@ def _normalize(features: dict[str, np.ndarray], clips: list, how: str) -> dict[s
         x = (x - x.mean(axis=axes, keepdims=True)) / (x.std(axis=axes, keepdims=True) + 1e-6)
         out.update(zip(paths, x.astype(features[paths[0]].dtype)))
     return out
+
+
+def _scorable(settings: list, clips: list, norm: str, features: dict) -> list:
+    """With neutral enrollment, the enrollment clips leave every split."""
+    if norm != "neutral":
+        return settings
+    enroll = enrollment_paths(clips)
+    return [(name, *(drop(group, enroll, features) for group in groups)) for name, *groups in settings]
 
 
 def _run_wavlm(name: str, train_clips: list, val_clips: list, test_clips: list, features: dict, head: str = DEFAULT_HEAD) -> dict:
@@ -294,12 +307,12 @@ def run(
     if "egemaps" in models:
         print(f"\negemaps{suffix}")
         features = _normalize(dict(zip(paths, egemaps_features(paths, ARTIFACTS / "egemaps_cache.json"))), clips, norm)
-        results[f"egemaps{suffix}"] = [_run_egemaps(*setting, features) for setting in settings]
+        results[f"egemaps{suffix}"] = [_run_egemaps(*setting, features) for setting in _scorable(settings, clips, norm, features)]
     if "wavlm" in models:
         name = model_key(encoder, head) + suffix
         print(f"\n{name}")
         features = _normalize(dict(zip(paths, embed_clips(paths, encoder, cache_path(ARTIFACTS, encoder)))), clips, norm)
-        results[name] = [_run_wavlm(*setting, features, head) for setting in settings]
+        results[name] = [_run_wavlm(*setting, features, head) for setting in _scorable(settings, clips, norm, features)]
 
     out = ARTIFACTS / "cross_corpus_report.json"
     previous = json.loads(out.read_text()) if out.is_file() else {}
@@ -362,7 +375,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--models", nargs="+", choices=("cnn", "egemaps", "wavlm"), default=["cnn", "egemaps", "wavlm"])
     parser.add_argument("--encoder", default=DEFAULT_ENCODER, help="Hugging Face id of the pretrained speech encoder")
-    parser.add_argument("--norm", choices=("none", "corpus", "speaker"), default="none", help="feature normalization for eGeMAPS and WavLM")
+    parser.add_argument("--norm", choices=("none", "corpus", "speaker", "neutral"), default="none", help="feature normalization for eGeMAPS and WavLM")
     parser.add_argument("--head", choices=sorted(HEADS), default=DEFAULT_HEAD, help="WavLM head")
     args = parser.parse_args()
     run(tuple(args.models), args.encoder, args.norm, args.head)

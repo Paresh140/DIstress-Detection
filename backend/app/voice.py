@@ -9,7 +9,9 @@ on RAVDESS actors 01–18, plus CREMA-D
 when data/crema-d/ exists (all but nine speakers). RAVDESS actors 19–20 and
 those nine CREMA-D speakers choose the epoch, the temperature and the
 threshold. RAVDESS actors 21–24 are scored once and the result is saved with
-the head in artifacts/voice_head.pt. Copy that file next to the studio and it
+the head in artifacts/voice_head.pt. A second head is trained the same way on
+features shifted by each speaker's calm enrollment (two neutral clips); the
+studio uses it once the person has recorded their enrollment. Copy that file next to the studio and it
 replaces the CNN on Monitor; without it the CNN is used, as before.
 
 At run time the encoder weights come from Hugging Face (about 380 MB, cached
@@ -29,6 +31,7 @@ import torch
 from . import calibration
 from .corpora import discover
 from .dataset import TEST_ACTORS, TRAIN_ACTORS, VAL_ACTORS
+from .enrollment import ENROLL_CLIPS, drop, enrollment_paths, neutral_shift, reference
 from .speech_encoder import (
     CLASSES,
     DEFAULT_ENCODER,
@@ -76,6 +79,30 @@ def train(encoder: str = DEFAULT_ENCODER, head: str = LIVE_HEAD, out: Path = ART
     paths = [str(c.path) for c in clips]
     features = dict(zip(paths, embed_clips(paths, encoder, cache_path(ARTIFACTS, encoder))))
 
+    plain = _fit(train_clips, val_clips, test_clips, features, encoder, head)
+    # The same head on features shifted by each speaker's neutral enrollment (app/enrollment.py).
+    enroll = enrollment_paths(clips)
+    shifted = neutral_shift(features, clips, enroll)
+    enrolled = _fit(*(drop(group, enroll, shifted) for group in (train_clips, val_clips, test_clips)), shifted, encoder, head)
+    enrolled["summary"]["enrollment"] = f"mean of {ENROLL_CLIPS} neutral clips per speaker, left out of every split"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    first = features[paths[0]]
+    torch.save(
+        {
+            **plain,  # the plain head at the top level, as older files had it
+            "n_layers": int(first.shape[0]),
+            "dim": int(first.shape[-1]),
+            "enrolled": enrolled,
+            "enroll_clips": ENROLL_CLIPS,
+        },
+        out,
+    )
+    summary = {"plain": plain["summary"], "enrolled": enrolled["summary"]}
+    print(json.dumps(summary, indent=2))
+    return summary
+
+
+def _fit(train_clips: list, val_clips: list, test_clips: list, features: dict, encoder: str, head: str) -> dict:
     def stack(group: list) -> np.ndarray:
         return np.stack([features[str(c.path)] for c in group])
 
@@ -102,58 +129,71 @@ def train(encoder: str = DEFAULT_ENCODER, head: str = LIVE_HEAD, out: Path = ART
         "layer_weights": fitted["layer_weights"],
     }
     model: LayerMixHead = fitted["head"]
-    out.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {
-            "state": {k: v.cpu() for k, v in model.state_dict().items()},
-            "n_layers": int(features[paths[0]].shape[0]),
-            "dim": int(features[paths[0]].shape[-1]),
-            "mean": fitted["scale"].mean,
-            "std": fitted["scale"].std,
-            "summary": summary,
-        },
-        out,
-    )
-    print(json.dumps(summary, indent=2))
-    return summary
+    return {
+        "state": {k: v.cpu() for k, v in model.state_dict().items()},
+        "mean": fitted["scale"].mean,
+        "std": fitted["scale"].std,
+        "summary": summary,
+    }
+
+
+class _Head:
+    def __init__(self, saved: dict, n_layers: int, dim: int, dev: torch.device):
+        self.summary = saved["summary"]
+        spec = HEADS[self.summary["head"]]
+        self.model = LayerMixHead(n_layers, dim, classes=spec["classes"], pool=spec["pool"])
+        self.model.load_state_dict(saved["state"])
+        self.model.to(dev).eval()
+        self.scale = Standardizer.__new__(Standardizer)
+        self.scale.mean, self.scale.std = saved["mean"], saved["std"]
 
 
 class VoiceModel:
-    """Loads the encoder and the saved head once and scores one clip at a time."""
+    """Loads the encoder and the saved heads once and scores one clip at a time.
+
+    With enough enrollment clips from the current speaker, the enrolled head
+    scores features shifted by that speaker's calm reference; otherwise the
+    plain head is used.
+    """
 
     def __init__(self, path: Path):
         saved = torch.load(path, map_location="cpu", weights_only=True)
-        self.summary = saved["summary"]
-        spec = HEADS[self.summary["head"]]
         self.dev = device()
-        self.head = LayerMixHead(saved["n_layers"], saved["dim"], classes=spec["classes"], pool=spec["pool"])
-        self.head.load_state_dict(saved["state"])
-        self.head.to(self.dev).eval()
-        self.scale = Standardizer.__new__(Standardizer)
-        self.scale.mean, self.scale.std = saved["mean"], saved["std"]
+        self.plain = _Head(saved, saved["n_layers"], saved["dim"], self.dev)
+        self.enrolled = _Head(saved["enrolled"], saved["n_layers"], saved["dim"], self.dev) if "enrolled" in saved else None
+        self.enroll_clips = int(saved.get("enroll_clips", ENROLL_CLIPS))
+        self.summary = self.plain.summary
         self.extractor, self.encoder = load_encoder(self.summary["encoder"])
         self.encoder.to(self.dev).eval()
         self.mtime = path.stat().st_mtime
 
+    def features(self, path: str) -> np.ndarray:
+        return pooled_layers(load_16k(path), self.extractor, self.encoder, self.dev)
+
     @torch.no_grad()
-    def score(self, path: str) -> dict:
-        feats = pooled_layers(load_16k(path), self.extractor, self.encoder, self.dev)[None]
-        x = self.scale(feats, self.dev)
-        logits = self.head(x)
-        temperature = float(self.summary["temperature"])
+    def score(self, path: str, enrollment: list[np.ndarray] | None = None) -> dict:
+        feats = self.features(path)
+        use_enrolled = self.enrolled is not None and len(enrollment or []) >= self.enroll_clips
+        head = self.enrolled if use_enrolled else self.plain
+        if use_enrolled:
+            feats = feats - reference(np.stack(enrollment))
+        x = head.scale(feats[None], self.dev)
+        logits = head.model(x)
+        temperature = float(head.summary["temperature"])
         probability = float(calibration.distress_probability(logits.cpu().numpy(), temperature)[0])
         out = {
             "probability": probability,
-            "threshold": float(self.summary["threshold"]),
-            "model": f"{self.summary['encoder']} + {self.summary['head']} head",
+            "threshold": float(head.summary["threshold"]),
+            "model": f"{head.summary['encoder']} + {head.summary['head']} head" + (", calm enrollment" if use_enrolled else ""),
+            "enrolled": use_enrolled,
         }
         if logits.ndim == 2:
             classes = torch.softmax(logits[0] / temperature, dim=0).cpu().tolist()
             out["classes"] = {name: round(p, 4) for name, p in zip(CLASSES, classes)}
-        if self.head.pool == "attentive":
-            mixed = (self.head.layer_weights()[None, :, None, None] * x).sum(dim=1)
-            out["time_weights"] = [round(w, 4) for w in self.head.time_weights(mixed)[0].cpu().tolist()]
-        out["layer_weights"] = [round(float(w), 4) for w in self.head.layer_weights().cpu()]
+        if head.model.pool == "attentive":
+            mixed = (head.model.layer_weights()[None, :, None, None] * x).sum(dim=1)
+            out["time_weights"] = [round(w, 4) for w in head.model.time_weights(mixed)[0].cpu().tolist()]
+        out["layer_weights"] = [round(float(w), 4) for w in head.model.layer_weights().cpu()]
         return out
 
 
