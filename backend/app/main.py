@@ -8,7 +8,6 @@ import os
 import re
 import subprocess
 import sys
-import time
 import zipfile
 from pathlib import Path
 
@@ -26,7 +25,7 @@ from .chat import prompts, respond
 from .judge import adjudicate
 from .language import read_language
 from .model import DistressNet, architecture_spec
-from .storage import LOCAL_ARTIFACTS, artifact_file, clip_root, drive_folder
+from .storage import LOCAL_ARTIFACTS, artifact_file, clip_root
 from .train import EPOCHS
 from .voice import HEAD_FILE, REPORT_FILE, VoiceModel
 
@@ -267,7 +266,6 @@ def study():
             ),
         }
     report = json.loads(path.read_text())
-    report["source"] = "drive" if path.parent != ARTIFACTS else "local"
     report["updated"] = path.stat().st_mtime
     return report
 
@@ -295,11 +293,11 @@ def voice_report():
     path = artifact_file(REPORT_FILE)
     if path.is_file():
         report = json.loads(path.read_text(encoding="utf-8"))
-        return {"ready": True, "source": "drive" if path.parent != ARTIFACTS else "local", **report}
+        return {"ready": True, **report}
     voice = _voice_model()
     if voice is None:
         return {"ready": False, "error": _voice_error}
-    return {"ready": True, "source": "local", "summary": voice.summary, "epochs": 0, "history": [], "predictions": []}
+    return {"ready": True, "summary": voice.summary, "epochs": 0, "history": [], "predictions": []}
 
 
 @app.get("/api/voice/kaggle")
@@ -356,13 +354,10 @@ async def load_kaggle_results(files: list[UploadFile] = File(...)):
         temp = ARTIFACTS / f".{name}.part"
         temp.write_bytes(data)
         temp.replace(ARTIFACTS / name)
-    # A Drive copy of the same file would still be read first.
-    shadowed = [name for name in found if artifact_file(name) != ARTIFACTS / name]
     voice = _voice_model()
     return {
         "ok": True,
         "installed": sorted(found),
-        "shadowed": shadowed,
         "voice_model": "wavlm" if voice is not None else "cnn",
         "voice_error": _voice_error,
     }
@@ -429,184 +424,6 @@ def train_live():
         "best": best,
         "error": error,
     }
-
-
-COLAB_URL = "https://colab.research.google.com/drive/191x-_g3EAUwqb1ay1ZnT-Ovqzc1syroU"
-GPU_EPOCHS = 24
-
-
-CONSOLE_LOG = LOCAL_ARTIFACTS / "colab_console.json"
-GPU_SESSION = LOCAL_ARTIFACTS / "gpu_session.json"
-
-
-def _gpu_paths() -> tuple[Path, Path] | None:
-    folder = drive_folder()
-    if folder is None:
-        return None
-    artifacts = folder / "artifacts"
-    return artifacts / "train_status.json", artifacts / "train_live.jsonl"
-
-
-def _colab_console() -> dict | None:
-    if not CONSOLE_LOG.is_file():
-        return None
-    payload = json.loads(CONSOLE_LOG.read_text(encoding="utf-8"))
-    epochs = payload.get("epochs") or []
-    if len(epochs) < GPU_EPOCHS:
-        return None
-    return payload
-
-
-@app.post("/api/train/gpu")
-def prepare_gpu():
-    paths = _gpu_paths()
-    if paths is None:
-        raise HTTPException(status_code=404, detail="The DistressNet folder is not on this Mac's Google Drive.")
-    status_path, progress_path = paths
-    status_path.parent.mkdir(parents=True, exist_ok=True)
-    for path in (status_path, progress_path):
-        if path.exists():
-            path.unlink()
-    GPU_SESSION.write_text(json.dumps({"started": time.time()}))
-    return {"ok": True, "url": COLAB_URL, "epochs": GPU_EPOCHS}
-
-
-def _console_replay() -> dict | None:
-    payload = _colab_console()
-    if payload is None:
-        return None
-    history = [
-        {
-            "epoch": int(row["epoch"]),
-            "train_loss": float(row["train_loss"]),
-            "val_balanced_accuracy": float(row["val_balanced_accuracy"]),
-            "test_f1": float(row["test_f1"]),
-            "grad_norm": {},
-            "activation": {},
-        }
-        for row in payload["epochs"]
-    ]
-    chosen = payload["best"]
-    best = {
-        "epoch": int(chosen["epoch"]),
-        "f1": float(chosen["f1"]),
-        "accuracy": float(chosen["accuracy"]),
-        "precision": float(chosen["precision"]),
-        "recall": float(chosen["recall"]),
-        "loss": None,
-    }
-    display = {
-        "dataset": "RAVDESS speech audio, actors 01–24",
-        "citation": "Livingstone & Russo, 2018, PLoS ONE, doi:10.1371/journal.pone.0196391",
-        "seed": 7,
-        "device": "cuda",
-        "epochs_ran": GPU_EPOCHS,
-        "batch_size": 32,
-        "learning_rate": 0.001,
-        "optimizer": "Adam",
-        "weight_decay": 0.0001,
-        "loss": "BCEWithLogitsLoss",
-        "pos_weight": 0.5,
-        "threshold": 0.5,
-        "augmentation": "Random frequency mask (up to 8 bands) and time mask (up to 16 frames) on the log-mel input.",
-        "narrative": payload["narrative"],
-        "logged_only": True,
-        "label": {
-            "distress": ["sad", "angry", "fearful"],
-            "calm": ["neutral", "calm"],
-            "excluded": ["happy", "surprised", "disgust", "song"],
-        },
-        "split": {
-            "train_actors": list(range(1, 19)),
-            "val_actors": [19, 20],
-            "test_actors": [21, 22, 23, 24],
-            "unused_actors": [],
-            "train_clips": 648,
-            "test_clips": 144,
-            "train_distress": 432,
-            "train_calm": 216,
-        },
-        "parameters": {"audio": 163041, "vision_untrained": 89408, "fusion_untrained": 4161},
-        "history": history,
-        "best": best,
-        "predictions": [],
-    }
-    return {
-        "history": history,
-        "best": best,
-        "narrative": payload["narrative"],
-        "logged_only": True,
-        "display": display,
-    }
-
-
-@app.get("/api/train/gpu")
-def gpu_live():
-    paths = _gpu_paths()
-    history: list[dict] = []
-    best = None
-    phase = "waiting"
-    error = ""
-    logged_only = False
-    narrative = ""
-    display = None
-    if paths is None:
-        phase = "error"
-        error = "The DistressNet folder is not on this Mac's Google Drive."
-    else:
-        status_path, progress_path = paths
-        if progress_path.exists():
-            history, best = _read_progress_file(progress_path)
-        status_phase = ""
-        if status_path.exists():
-            status = json.loads(status_path.read_text(encoding="utf-8"))
-            status_phase = str(status.get("phase") or "waiting")
-            phase = status_phase
-            error = str(status.get("detail") or "")
-        elif history:
-            phase = "training"
-        session_started = 0.0
-        if GPU_SESSION.is_file():
-            session_started = float(json.loads(GPU_SESSION.read_text(encoding="utf-8")).get("started") or 0)
-        replay_allowed = session_started < CONSOLE_LOG.stat().st_mtime if CONSOLE_LOG.is_file() else False
-        drive_report = status_path.with_name("training_report.json")
-        if not history and status_phase in {"downloading", "training"} and replay_allowed and not drive_report.is_file():
-            replay = _console_replay()
-            if replay is not None:
-                history = replay["history"]
-                best = replay["best"]
-                narrative = replay["narrative"]
-                display = replay["display"]
-                logged_only = True
-                phase = "done"
-                error = ""
-    running = phase in {"waiting", "downloading", "training"}
-    return {
-        "running": running,
-        "phase": phase,
-        "epoch": history[-1]["epoch"] if history else 0,
-        "epochs": GPU_EPOCHS,
-        "history": history,
-        "best": best,
-        "error": error,
-        "url": COLAB_URL,
-        "logged_only": logged_only,
-        "narrative": narrative,
-        "display": display,
-    }
-
-
-def _read_progress_file(path: Path) -> tuple[list[dict], dict | None]:
-    history: list[dict] = []
-    best = None
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        event = json.loads(line)
-        if event.get("type") == "epoch":
-            history.append(event["row"])
-            best = event["best"]
-    return history, best
 
 
 @app.get("/api/training")

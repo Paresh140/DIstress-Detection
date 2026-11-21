@@ -1,7 +1,7 @@
 """Train the DistressNet audio branch on all 24 RAVDESS actors.
 
 Actors 01–18 train, 19–20 choose the checkpoint, 21–24 are the test set,
-the same split as colab/distressnet_colab.py.
+the same split as the Kaggle run.
 The test actors are logged each epoch for the studio curves but never decide
 which epoch is kept.
 """

@@ -61,7 +61,6 @@ export type StudyReport = {
   text?: { finding: string };
   runs?: StudyRun[];
   models?: Record<string, StudyRun[]>;
-  source?: "drive" | "local";
   updated?: number;
   disagreement?: {
     ready: boolean;
@@ -89,7 +88,6 @@ export type VoiceEpoch = {
 export type VoiceReport = {
   ready: boolean;
   error?: string;
-  source?: "drive" | "local";
   summary?: {
     encoder: string;
     head: string;
@@ -134,7 +132,6 @@ export async function getKaggleUrl(): Promise<{ url: string }> {
 export type KaggleResults = {
   ok: boolean;
   installed: string[];
-  shadowed: string[];
   voice_model: "wavlm" | "cnn";
   voice_error: string;
 };
@@ -149,32 +146,16 @@ export async function loadKaggleResults(files: File[]): Promise<KaggleResults> {
 
 export type TrainLive = {
   running: boolean;
-  phase: "idle" | "loading" | "waiting" | "downloading" | "training" | "done" | "error";
+  phase: "idle" | "loading" | "training" | "done" | "error";
   epoch: number;
   epochs: number;
   history: TrainEpoch[];
   best: TrainingReport["best"] | null;
   error: string;
-  url?: string;
-  logged_only?: boolean;
-  narrative?: string;
-  display?: TrainingReport | null;
 };
 
 export async function startTraining(): Promise<{ ok: boolean; epochs: number }> {
   const response = await fetch("/api/train/start", { method: "POST" });
-  if (!response.ok) throw new Error(await readError(response));
-  return response.json();
-}
-
-export async function startGpuTraining(): Promise<{ ok: boolean; url: string; epochs: number }> {
-  const response = await fetch("/api/train/gpu", { method: "POST" });
-  if (!response.ok) throw new Error(await readError(response));
-  return response.json();
-}
-
-export async function getGpuLive(): Promise<TrainLive> {
-  const response = await fetch("/api/train/gpu");
   if (!response.ok) throw new Error(await readError(response));
   return response.json();
 }

@@ -28,7 +28,7 @@ EMOTION_NAMES = {
     SURPRISED: "surprised",
 }
 
-# All 24 actors, the same split as the Colab run: 18 train, 2 validation
+# All 24 actors, the same split as the Kaggle run: 18 train, 2 validation
 # (checkpoint choice), 4 test. Odd actors are male and even actors female.
 ALL_ACTORS = set(range(1, 25))
 TRAIN_ACTORS = set(range(1, 19))

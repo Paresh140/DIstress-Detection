@@ -129,7 +129,6 @@ export type TrainingReport = {
   threshold: number;
   augmentation: string;
   narrative: string;
-  logged_only?: boolean;
   label: { distress: string[]; calm: string[]; excluded: string[] };
   split: {
     train_actors: number[];

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   clipUrl,
-  getGpuLive,
   getKaggleUrl,
   getStudy,
   getTrainLive,
@@ -10,7 +9,6 @@ import {
   loadKaggleResults,
   startTraining,
   type StudyReport,
-  type TrainLive,
   type VoiceReport,
 } from "../api";
 import type { TrainEpoch } from "../types";
@@ -33,57 +31,20 @@ export function TrainingView() {
   const [epoch, setEpoch] = useState(1);
   const [layer, setLayer] = useState("conv2");
   const [following, setFollowing] = useState(false);
-  const [remote, setRemote] = useState(false);
   const [starting, setStarting] = useState(false);
   const [serverDone, setServerDone] = useState(false);
   const [liveHistory, setLiveHistory] = useState<TrainEpoch[] | null>(null);
   const [liveBest, setLiveBest] = useState<TrainingReport["best"] | null>(null);
   const [liveNote, setLiveNote] = useState("");
   const [plannedEpochs, setPlannedEpochs] = useState(16);
-  const [overlay, setOverlay] = useState<TrainingReport | null>(null);
-  const [loggedOnly, setLoggedOnly] = useState(false);
   const [resultsVersion, setResultsVersion] = useState(0);
-
-  function playLoggedRun(live: TrainLive) {
-    if (!live.display) return;
-    setOverlay(live.display);
-    setLoggedOnly(true);
-    setRemote(true);
-    setLiveHistory(live.history);
-    setLiveBest(live.best);
-    setPlannedEpochs(live.epochs);
-    setServerDone(true);
-    setEpoch(1);
-    setFollowing(true);
-  }
 
   useEffect(() => {
     let active = true;
-    Promise.all([getTraining(), getGpuLive()])
-      .then(([next, live]) => {
+    getTraining()
+      .then((next) => {
         if (!active) return;
         setReport(next);
-        const playSavedGpu = next.epochs_ran >= 24 && sessionStorage.getItem("distressnet-gpu-played") !== "1";
-        if (playSavedGpu) {
-          sessionStorage.setItem("distressnet-gpu-played", "1");
-          setRemote(true);
-          setLoggedOnly(false);
-          setLiveHistory(next.history);
-          setLiveBest(next.best);
-          setPlannedEpochs(next.epochs_ran);
-          setServerDone(true);
-          setEpoch(1);
-          setFollowing(true);
-          return;
-        }
-        if (next.epochs_ran >= 24) {
-          setEpoch(next.best.epoch);
-          return;
-        }
-        if (live.logged_only && live.display && live.history.length) {
-          playLoggedRun(live);
-          return;
-        }
         setEpoch(next.best.epoch);
       })
       .catch((err: Error) => {
@@ -95,41 +56,15 @@ export function TrainingView() {
   }, []);
 
   useEffect(() => {
-    if (!loggedOnly) return;
-    const timer = window.setInterval(() => {
-      getTraining()
-        .then((next) => {
-          if (next.epochs_ran < 24) return;
-          setReport(next);
-          setOverlay(null);
-          setLoggedOnly(false);
-          setLiveHistory(null);
-          setLiveBest(null);
-          setFollowing(false);
-          setServerDone(false);
-          setEpoch(next.best.epoch);
-          setLiveNote("Drive copied the checkpoint. Actors 21–24 scored it.");
-        })
-        .catch(() => undefined);
-    }, 4000);
-    return () => window.clearInterval(timer);
-  }, [loggedOnly]);
-
-  useEffect(() => {
     if (!following || serverDone) return;
     const timer = window.setInterval(() => {
-      const pull = remote ? getGpuLive() : getTrainLive();
-      pull
+      getTrainLive()
         .then((live) => {
           setPlannedEpochs(live.epochs);
           if (live.history.length) {
             setLiveHistory(live.history);
             if (live.best) setLiveBest(live.best);
             setEpoch((current) => (current < 1 ? 1 : current));
-          } else if (live.phase === "downloading") {
-            setLiveNote("The GPU is downloading all 24 actors into Drive.");
-          } else if (remote) {
-            setLiveNote("Colab is in the other tab. This page stays here and draws each epoch.");
           } else {
             setLiveNote("Loading the clips. The first epoch has not finished yet.");
           }
@@ -141,9 +76,9 @@ export function TrainingView() {
           }
         })
         .catch((err: Error) => setError(err.message));
-    }, remote ? 2000 : 700);
+    }, 700);
     return () => window.clearInterval(timer);
-  }, [following, serverDone, remote]);
+  }, [following, serverDone]);
 
   useEffect(() => {
     if (!following || !liveHistory?.length || epoch < 1) return;
@@ -153,16 +88,6 @@ export function TrainingView() {
     }
     if (serverDone && epoch >= liveHistory.length) {
       const timer = window.setTimeout(() => {
-        if (loggedOnly) {
-          setFollowing(false);
-          setServerDone(false);
-          setLiveHistory(null);
-          setEpoch(liveBest?.epoch ?? epoch);
-          setLiveNote(
-            "Actors 21–24 scored this run. The checkpoint is on Drive and has not reached this Mac yet, so the voice network here is still the earlier one.",
-          );
-          return;
-        }
         getTraining()
           .then((next) => {
             setReport(next);
@@ -178,13 +103,10 @@ export function TrainingView() {
       return () => window.clearTimeout(timer);
     }
     return undefined;
-  }, [following, liveHistory, epoch, serverDone, loggedOnly, liveBest]);
+  }, [following, liveHistory, epoch, serverDone]);
 
   async function trainAgain() {
     setError("");
-    setOverlay(null);
-    setLoggedOnly(false);
-    setRemote(false);
     setStarting(true);
     setEpoch(0);
     setLiveHistory(null);
@@ -213,7 +135,7 @@ export function TrainingView() {
     );
   }
 
-  const view = overlay ?? report;
+  const view = report;
   const history = liveHistory && epoch > 0 ? liveHistory.slice(0, epoch) : view.history;
   const best = liveBest ?? view.best;
   const detailed = history.some((row) => typeof row.test_loss === "number");
@@ -237,15 +159,11 @@ export function TrainingView() {
         <p className="lede">{view.narrative}</p>
         <div className="train-bar">
           <button type="button" className="file-btn" onClick={() => void trainAgain()} disabled={starting || following}>
-            {following && !remote ? "Training" : "Train on this Mac"}
+            {following ? "Training" : "Train on this Mac"}
           </button>
           <p className="fine">
             {showingLive
-              ? `Epoch ${epoch} of ${plannedEpochs}. ${
-                  view.logged_only
-                    ? "These are the epochs Colab printed. Drive has not copied the checkpoint to this Mac yet."
-                    : "Each epoch stays on the network so the forward and backward pass can be seen."
-                }`
+              ? `Epoch ${epoch} of ${plannedEpochs}. Each epoch stays on the network so the forward and backward pass can be seen.`
               : liveNote ||
                 "The log-mel CNN came before the WavLM model above. Train on this Mac retrains it on the clips already here."}
           </p>
@@ -262,12 +180,6 @@ export function TrainingView() {
         bestEpoch={best.epoch}
       />
       <p className="fine train-note">
-        {view.logged_only ? (
-          <>
-            Brightness follows this epoch’s test F1. Pale dots move forward and clay dots move backward.
-            Layer activations and gradients are in the checkpoint file, which has not reached this Mac yet.
-          </>
-        ) : (
           <>
             Click a column, or a row in the epoch table. Brightness is activation
             {layerScale(history, stageEpoch, layer, "activation") !== null
@@ -276,7 +188,6 @@ export function TrainingView() {
             . Warmer edges are larger gradients on that epoch.
             {showingLive ? " Pale dots move forward and clay dots move backward on this epoch." : ""}
           </>
-        )}
       </p>
 
       <div className="stat-grid">
@@ -348,7 +259,7 @@ export function TrainingView() {
             </>
           ) : (
             <p className="fine">
-              The confusion counts are in the saved report. Drive has not copied that file to this Mac yet.
+              This report has no confusion counts.
             </p>
           )}
         </article>
@@ -487,7 +398,7 @@ export function TrainingView() {
           ))}
         </ul>
         ) : (
-          <p className="fine">Held-out clip scores are in the saved report. Drive has not copied that file to this Mac yet.</p>
+          <p className="fine">This report has no held-out clip scores.</p>
         )}
       </article>
 
@@ -536,8 +447,7 @@ function VoiceSection({ onLoaded }: { onLoaded: () => void }) {
     try {
       const done = await loadKaggleResults(Array.from(files));
       const model = done.voice_model === "wavlm" ? "Monitor now uses the new WavLM model." : done.voice_error;
-      const shadowed = done.shadowed.length ? ` Drive still has its own copy of ${done.shadowed.join(", ")}, which is read first.` : "";
-      setNote(`Loaded ${done.installed.join(", ")}. ${model}${shadowed}`);
+      setNote(`Loaded ${done.installed.join(", ")}. ${model}`);
       loadVoice();
       onLoaded();
     } catch (err) {
@@ -743,7 +653,7 @@ function StudySection() {
           </label>
           {study.updated ? (
             <p className="fine">
-              Report from {study.source === "drive" ? "Drive" : "this Mac"}, written{" "}
+              Report written{" "}
               {new Date(study.updated * 1000).toLocaleString()}.
             </p>
           ) : null}

@@ -5,7 +5,7 @@ not in this workspace. The audio study therefore uses the planned fallback:
 RAVDESS and CREMA-D, in both directions.
 
 Distress is sad, angry or fearful. Non-distress is neutral or calm, the same
-map the Monitor demo and the Colab run use. Calm only occurs in RAVDESS.
+map the Monitor demo and the Kaggle run use. Calm only occurs in RAVDESS.
 Happy, disgust, and surprise are excluded.
 """
 
