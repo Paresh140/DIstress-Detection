@@ -1,0 +1,200 @@
+{"text": "I'm doing pretty well today, thanks for asking.", "label": 0, "category": "calm_plain"}
+{"text": "Had a good lunch with my sister and now I'm back at my desk.", "label": 0, "category": "calm_plain"}
+{"text": "Everything's fine, just a normal Tuesday.", "label": 0, "category": "calm_plain"}
+{"text": "I slept well and feel rested.", "label": 0, "category": "calm_plain"}
+{"text": "Work was busy but in a good way.", "label": 0, "category": "calm_plain"}
+{"text": "I'm looking forward to the weekend.", "label": 0, "category": "calm_plain"}
+{"text": "Just finished a run and I feel great.", "label": 0, "category": "calm_plain"}
+{"text": "Nothing much going on, I'm relaxed.", "label": 0, "category": "calm_plain"}
+{"text": "I'm happy with how the project turned out.", "label": 0, "category": "calm_plain"}
+{"text": "We had a nice dinner and watched a movie.", "label": 0, "category": "calm_plain"}
+{"text": "Honestly, I feel calm and settled right now.", "label": 0, "category": "calm_plain"}
+{"text": "The exam went better than I expected.", "label": 0, "category": "calm_plain"}
+{"text": "I'm okay, just reading a book.", "label": 0, "category": "calm_plain"}
+{"text": "My week has been pretty smooth.", "label": 0, "category": "calm_plain"}
+{"text": "I'm in a good mood, the weather is lovely.", "label": 0, "category": "calm_plain"}
+{"text": "I finally cleaned my room and it feels good.", "label": 0, "category": "calm_plain"}
+{"text": "Things are going fine with my new job.", "label": 0, "category": "calm_plain"}
+{"text": "I'm chilling at home with my cat.", "label": 0, "category": "calm_plain"}
+{"text": "I feel content, nothing to complain about.", "label": 0, "category": "calm_plain"}
+{"text": "I'm excited to see my friends tonight.", "label": 0, "category": "calm_plain"}
+{"text": "Got some good news from my landlord today.", "label": 0, "category": "calm_plain"}
+{"text": "I'm fine, just a little hungry.", "label": 0, "category": "calm_plain"}
+{"text": "Today was quiet and peaceful.", "label": 0, "category": "calm_plain"}
+{"text": "I'm doing all right, thanks.", "label": 0, "category": "calm_plain"}
+{"text": "I enjoyed the class this morning.", "label": 0, "category": "calm_plain"}
+{"text": "I need to pick up groceries after work.", "label": 0, "category": "calm_neutral"}
+{"text": "The meeting got moved to three o'clock.", "label": 0, "category": "calm_neutral"}
+{"text": "Can you remind me what time the bus leaves?", "label": 0, "category": "calm_neutral"}
+{"text": "I'm making pasta for dinner.", "label": 0, "category": "calm_neutral"}
+{"text": "The printer on the second floor is out of paper again.", "label": 0, "category": "calm_neutral"}
+{"text": "I watched the game last night.", "label": 0, "category": "calm_neutral"}
+{"text": "I have two chapters left to read for class.", "label": 0, "category": "calm_neutral"}
+{"text": "My phone battery is at forty percent.", "label": 0, "category": "calm_neutral"}
+{"text": "I think it might rain later.", "label": 0, "category": "calm_neutral"}
+{"text": "We're painting the kitchen this weekend.", "label": 0, "category": "calm_neutral"}
+{"text": "I'm going to call my mom later.", "label": 0, "category": "calm_neutral"}
+{"text": "The train was a few minutes late this morning.", "label": 0, "category": "calm_neutral"}
+{"text": "I'm trying a new recipe tonight.", "label": 0, "category": "calm_neutral"}
+{"text": "I need to renew my library books.", "label": 0, "category": "calm_neutral"}
+{"text": "I'm wearing the blue jacket today.", "label": 0, "category": "calm_neutral"}
+{"text": "I just got back from the dentist, everything was fine.", "label": 0, "category": "calm_neutral"}
+{"text": "My brother is visiting next month.", "label": 0, "category": "calm_neutral"}
+{"text": "I'm thinking about getting a new laptop.", "label": 0, "category": "calm_neutral"}
+{"text": "I'll be working from home tomorrow.", "label": 0, "category": "calm_neutral"}
+{"text": "The coffee shop was crowded this morning.", "label": 0, "category": "calm_neutral"}
+{"text": "I'm updating my resume.", "label": 0, "category": "calm_neutral"}
+{"text": "We have a quiz on Friday.", "label": 0, "category": "calm_neutral"}
+{"text": "I parked on the third level.", "label": 0, "category": "calm_neutral"}
+{"text": "I'm heading to the gym in an hour.", "label": 0, "category": "calm_neutral"}
+{"text": "I'm not sure what to have for dinner yet.", "label": 0, "category": "calm_neutral"}
+{"text": "I'm not sad at all, just thinking.", "label": 0, "category": "calm_tricky"}
+{"text": "I was stressed last week but it's sorted now.", "label": 0, "category": "calm_tricky"}
+{"text": "I used to feel anxious about exams, but not anymore.", "label": 0, "category": "calm_tricky"}
+{"text": "That horror movie was so scary, I loved it.", "label": 0, "category": "calm_tricky"}
+{"text": "I'm tired, but it's the good kind of tired after hiking.", "label": 0, "category": "calm_tricky"}
+{"text": "My friend is having a rough time, so I'm bringing her soup.", "label": 0, "category": "calm_tricky"}
+{"text": "The book is about grief, and it's beautifully written.", "label": 0, "category": "calm_tricky"}
+{"text": "I was nervous before the presentation, then it went fine.", "label": 0, "category": "calm_tricky"}
+{"text": "I cried at the wedding because I was so happy.", "label": 0, "category": "calm_tricky"}
+{"text": "This spicy food is killing me, it's so good.", "label": 0, "category": "calm_tricky"}
+{"text": "I'm a bit annoyed the store was out of oat milk.", "label": 0, "category": "calm_tricky"}
+{"text": "No complaints, other than the traffic.", "label": 0, "category": "calm_tricky"}
+{"text": "I'm not worried about it anymore.", "label": 0, "category": "calm_tricky"}
+{"text": "We talked about sad songs in music class today.", "label": 0, "category": "calm_tricky"}
+{"text": "I feel better than I have in months.", "label": 0, "category": "calm_tricky"}
+{"text": "The news was depressing, but I'm doing fine myself.", "label": 0, "category": "calm_tricky"}
+{"text": "I almost panicked when I lost my keys, then I found them in my pocket.", "label": 0, "category": "calm_tricky"}
+{"text": "I'm writing an essay on anxiety for my psychology course.", "label": 0, "category": "calm_tricky"}
+{"text": "The dog was scared of the fireworks, but he's calm now.", "label": 0, "category": "calm_tricky"}
+{"text": "I'm bored, honestly, nothing is wrong.", "label": 0, "category": "calm_tricky"}
+{"text": "Mondays are the worst, haha, but I'm fine.", "label": 0, "category": "calm_tricky"}
+{"text": "My exam is next week and I feel prepared.", "label": 0, "category": "calm_tricky"}
+{"text": "I'm not upset, I just need a minute to think it over.", "label": 0, "category": "calm_tricky"}
+{"text": "Things got hard for a while last year, but I'm in a good place now.", "label": 0, "category": "calm_tricky"}
+{"text": "I was so angry at the referee, but it's just a game.", "label": 0, "category": "calm_tricky"}
+{"text": "Kind of a long day, but nothing bad happened.", "label": 0, "category": "calm_mild"}
+{"text": "I'm a little tired, I'll go to bed early.", "label": 0, "category": "calm_mild"}
+{"text": "Work was a bit much today, but I'm okay.", "label": 0, "category": "calm_mild"}
+{"text": "Eh, it's been an average week.", "label": 0, "category": "calm_mild"}
+{"text": "I'm a little stressed about the deadline, but I've got a plan.", "label": 0, "category": "calm_mild"}
+{"text": "I'm slightly nervous about my interview, but mostly excited.", "label": 0, "category": "calm_mild"}
+{"text": "Traffic was annoying, otherwise fine.", "label": 0, "category": "calm_mild"}
+{"text": "I have a mild headache, nothing serious.", "label": 0, "category": "calm_mild"}
+{"text": "It's been a meh day, but I'm all right.", "label": 0, "category": "calm_mild"}
+{"text": "I could use more coffee, but I'm good.", "label": 0, "category": "calm_mild"}
+{"text": "I'm a bit sore from the gym.", "label": 0, "category": "calm_mild"}
+{"text": "I'm somewhat busy, but managing.", "label": 0, "category": "calm_mild"}
+{"text": "It rained all day so I stayed in. It was fine.", "label": 0, "category": "calm_mild"}
+{"text": "Not my most productive day, oh well.", "label": 0, "category": "calm_mild"}
+{"text": "I'm a little behind on emails, I'll catch up tomorrow.", "label": 0, "category": "calm_mild"}
+{"text": "I missed the bus, but the next one came quickly.", "label": 0, "category": "calm_mild"}
+{"text": "I'm a bit homesick sometimes, but I like it here.", "label": 0, "category": "calm_mild"}
+{"text": "I'm nervous-excited about moving next month.", "label": 0, "category": "calm_mild"}
+{"text": "The week was tiring but I got everything done.", "label": 0, "category": "calm_mild"}
+{"text": "I'm low on sleep but feeling okay.", "label": 0, "category": "calm_mild"}
+{"text": "I'm a little bummed the concert was canceled.", "label": 0, "category": "calm_mild"}
+{"text": "It was a frustrating meeting, but we sorted it out.", "label": 0, "category": "calm_mild"}
+{"text": "I'm fine, just need a quiet evening.", "label": 0, "category": "calm_mild"}
+{"text": "I've been a bit distracted, nothing major.", "label": 0, "category": "calm_mild"}
+{"text": "I'm a little worried about the weather for the trip, that's all.", "label": 0, "category": "calm_mild"}
+{"text": "I feel awful and I don't know what to do.", "label": 1, "category": "distress_plain"}
+{"text": "I'm really scared right now.", "label": 1, "category": "distress_plain"}
+{"text": "I've been crying all day.", "label": 1, "category": "distress_plain"}
+{"text": "I feel so anxious I can't sit still.", "label": 1, "category": "distress_plain"}
+{"text": "I'm not okay.", "label": 1, "category": "distress_plain"}
+{"text": "Everything feels hopeless lately.", "label": 1, "category": "distress_plain"}
+{"text": "I'm so angry I'm shaking.", "label": 1, "category": "distress_plain"}
+{"text": "I feel really depressed.", "label": 1, "category": "distress_plain"}
+{"text": "I'm having a panic attack.", "label": 1, "category": "distress_plain"}
+{"text": "I'm overwhelmed and I can't cope.", "label": 1, "category": "distress_plain"}
+{"text": "I feel terrible, my chest is tight and I can't breathe properly.", "label": 1, "category": "distress_plain"}
+{"text": "I'm so lonely it hurts.", "label": 1, "category": "distress_plain"}
+{"text": "I can't stop worrying about everything.", "label": 1, "category": "distress_plain"}
+{"text": "I feel like I'm falling apart.", "label": 1, "category": "distress_plain"}
+{"text": "I'm exhausted and miserable.", "label": 1, "category": "distress_plain"}
+{"text": "I'm terrified about what's going to happen.", "label": 1, "category": "distress_plain"}
+{"text": "I feel really low today.", "label": 1, "category": "distress_plain"}
+{"text": "My anxiety is through the roof.", "label": 1, "category": "distress_plain"}
+{"text": "I'm heartbroken and I can't stop thinking about it.", "label": 1, "category": "distress_plain"}
+{"text": "I'm so stressed I feel sick.", "label": 1, "category": "distress_plain"}
+{"text": "I've been feeling empty for weeks.", "label": 1, "category": "distress_plain"}
+{"text": "I'm furious and I don't know how to calm down.", "label": 1, "category": "distress_plain"}
+{"text": "I'm frightened and I need help.", "label": 1, "category": "distress_plain"}
+{"text": "I'm sad all the time now.", "label": 1, "category": "distress_plain"}
+{"text": "Please, I need someone to talk to, I'm struggling.", "label": 1, "category": "distress_plain"}
+{"text": "I haven't left my bed in three days.", "label": 1, "category": "distress_indirect"}
+{"text": "What's the point of even trying anymore.", "label": 1, "category": "distress_indirect"}
+{"text": "I don't really see a future for myself.", "label": 1, "category": "distress_indirect"}
+{"text": "Nobody would notice if I just disappeared.", "label": 1, "category": "distress_indirect"}
+{"text": "I keep messing everything up, I'm useless.", "label": 1, "category": "distress_indirect"}
+{"text": "I haven't eaten properly in days, I just can't.", "label": 1, "category": "distress_indirect"}
+{"text": "I lie awake every night with my heart racing.", "label": 1, "category": "distress_indirect"}
+{"text": "I don't feel like myself anymore.", "label": 1, "category": "distress_indirect"}
+{"text": "Everyone would be better off without me.", "label": 1, "category": "distress_indirect"}
+{"text": "I can't remember the last time I felt happy.", "label": 1, "category": "distress_indirect"}
+{"text": "I just want everything to stop for a while.", "label": 1, "category": "distress_indirect"}
+{"text": "I'm so tired of pretending I'm fine.", "label": 1, "category": "distress_indirect"}
+{"text": "I feel like a burden to everyone around me.", "label": 1, "category": "distress_indirect"}
+{"text": "I can't focus on anything, my head is a mess.", "label": 1, "category": "distress_indirect"}
+{"text": "I've stopped answering my friends' messages.", "label": 1, "category": "distress_indirect"}
+{"text": "Every little thing makes me want to scream.", "label": 1, "category": "distress_indirect"}
+{"text": "I feel numb, like nothing matters.", "label": 1, "category": "distress_indirect"}
+{"text": "I keep thinking something terrible is about to happen.", "label": 1, "category": "distress_indirect"}
+{"text": "I don't know how much longer I can keep doing this.", "label": 1, "category": "distress_indirect"}
+{"text": "I've been snapping at everyone and I hate myself for it.", "label": 1, "category": "distress_indirect"}
+{"text": "My hands won't stop shaking.", "label": 1, "category": "distress_indirect"}
+{"text": "I wake up dreading every single day.", "label": 1, "category": "distress_indirect"}
+{"text": "I feel trapped and there's no way out.", "label": 1, "category": "distress_indirect"}
+{"text": "I just sit in my car after work because I can't face going inside.", "label": 1, "category": "distress_indirect"}
+{"text": "I don't want to be here anymore.", "label": 1, "category": "distress_indirect"}
+{"text": "My body feels wrong and I'm really scared.", "label": 1, "category": "distress_somatic"}
+{"text": "I'm in so much pain I can't think straight.", "label": 1, "category": "distress_somatic"}
+{"text": "I feel dizzy and my heart is pounding and I'm frightened.", "label": 1, "category": "distress_somatic"}
+{"text": "I've had a crushing headache for days and I'm worried.", "label": 1, "category": "distress_somatic"}
+{"text": "I can't catch my breath and it's scaring me.", "label": 1, "category": "distress_somatic"}
+{"text": "I feel sick to my stomach with worry.", "label": 1, "category": "distress_somatic"}
+{"text": "I'm hurting and nobody believes me.", "label": 1, "category": "distress_somatic"}
+{"text": "My chest hurts every time I think about it.", "label": 1, "category": "distress_somatic"}
+{"text": "I can't sleep and I feel like I'm going to collapse.", "label": 1, "category": "distress_somatic"}
+{"text": "I'm shaking and I can't make it stop.", "label": 1, "category": "distress_somatic"}
+{"text": "I feel faint and I'm all alone here.", "label": 1, "category": "distress_somatic"}
+{"text": "Everything aches and I'm so worn down.", "label": 1, "category": "distress_somatic"}
+{"text": "I'm sweating and panicking and I don't know why.", "label": 1, "category": "distress_somatic"}
+{"text": "My stomach is in knots all the time from the stress.", "label": 1, "category": "distress_somatic"}
+{"text": "I feel so unwell and I'm scared it's serious.", "label": 1, "category": "distress_somatic"}
+{"text": "I'm not feeling well at all, please help.", "label": 1, "category": "distress_somatic"}
+{"text": "I can't stop crying and my head is pounding.", "label": 1, "category": "distress_somatic"}
+{"text": "I feel like I can't breathe when I'm at work.", "label": 1, "category": "distress_somatic"}
+{"text": "I'm so tense my jaw hurts.", "label": 1, "category": "distress_somatic"}
+{"text": "I feel like I'm going to throw up from nerves.", "label": 1, "category": "distress_somatic"}
+{"text": "I'm trembling and my thoughts are racing.", "label": 1, "category": "distress_somatic"}
+{"text": "I feel weak and hopeless.", "label": 1, "category": "distress_somatic"}
+{"text": "My heart won't slow down and I'm terrified.", "label": 1, "category": "distress_somatic"}
+{"text": "I'm in pain and I'm really struggling to cope.", "label": 1, "category": "distress_somatic"}
+{"text": "I feel physically drained and emotionally broken.", "label": 1, "category": "distress_somatic"}
+{"text": "I guess I'm just not doing great.", "label": 1, "category": "distress_understated"}
+{"text": "Honestly, it's been a really rough week.", "label": 1, "category": "distress_understated"}
+{"text": "Things at home are pretty bad right now.", "label": 1, "category": "distress_understated"}
+{"text": "I've been better, to be honest.", "label": 1, "category": "distress_understated"}
+{"text": "It's a lot. It's just a lot.", "label": 1, "category": "distress_understated"}
+{"text": "I don't know, I'm just kind of struggling.", "label": 1, "category": "distress_understated"}
+{"text": "I'm hanging in there, barely.", "label": 1, "category": "distress_understated"}
+{"text": "I'm fine. I mean, not really.", "label": 1, "category": "distress_understated"}
+{"text": "Work has been crushing me lately.", "label": 1, "category": "distress_understated"}
+{"text": "My breakup has hit me harder than I thought.", "label": 1, "category": "distress_understated"}
+{"text": "I just feel off, and it's been weeks.", "label": 1, "category": "distress_understated"}
+{"text": "I'm getting by, but it's hard.", "label": 1, "category": "distress_understated"}
+{"text": "I lost my job and I don't know what to do.", "label": 1, "category": "distress_understated"}
+{"text": "My dad is in the hospital and I'm a wreck.", "label": 1, "category": "distress_understated"}
+{"text": "I failed the exam and I feel like a failure.", "label": 1, "category": "distress_understated"}
+{"text": "Things haven't been good since the move.", "label": 1, "category": "distress_understated"}
+{"text": "I keep telling people I'm okay but I'm not.", "label": 1, "category": "distress_understated"}
+{"text": "I've been really on edge lately.", "label": 1, "category": "distress_understated"}
+{"text": "I'm just so done with everything.", "label": 1, "category": "distress_understated"}
+{"text": "I don't have anyone to talk to about this.", "label": 1, "category": "distress_understated"}
+{"text": "Can't shake this heavy feeling.", "label": 1, "category": "distress_understated"}
+{"text": "I'm barely keeping it together.", "label": 1, "category": "distress_understated"}
+{"text": "It's been a hard few months and it's not getting better.", "label": 1, "category": "distress_understated"}
+{"text": "I'm tired all the time and I don't enjoy anything.", "label": 1, "category": "distress_understated"}
+{"text": "I'm worried I'm losing control.", "label": 1, "category": "distress_understated"}

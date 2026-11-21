@@ -1,0 +1,11 @@
+torch
+fastapi
+uvicorn
+python-multipart
+numpy
+scipy
+scikit-learn
+opensmile
+transformers
+faster-whisper
+pytest

@@ -1,0 +1,2044 @@
+{
+  "sentences": 200,
+  "threshold": 0.5,
+  "readers": {
+    "phrases": {
+      "balanced_accuracy": 0.58,
+      "macro_f1": 0.5,
+      "auroc": 0.5858,
+      "recall": 0.18,
+      "specificity": 0.98,
+      "accuracy_by_category": {
+        "calm_mild": 1.0,
+        "calm_neutral": 1.0,
+        "calm_plain": 1.0,
+        "calm_tricky": 0.92,
+        "distress_indirect": 0.0,
+        "distress_plain": 0.36,
+        "distress_somatic": 0.36,
+        "distress_understated": 0.0
+      },
+      "predictions": [
+        {
+          "text": "I'm doing pretty well today, thanks for asking.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Had a good lunch with my sister and now I'm back at my desk.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Everything's fine, just a normal Tuesday.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I slept well and feel rested.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Work was busy but in a good way.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm looking forward to the weekend.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Just finished a run and I feel great.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Nothing much going on, I'm relaxed.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm happy with how the project turned out.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "We had a nice dinner and watched a movie.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Honestly, I feel calm and settled right now.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "The exam went better than I expected.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm okay, just reading a book.",
+          "label": 0,
+          "probability": 0.12
+        },
+        {
+          "text": "My week has been pretty smooth.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm in a good mood, the weather is lovely.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I finally cleaned my room and it feels good.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Things are going fine with my new job.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm chilling at home with my cat.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel content, nothing to complain about.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm excited to see my friends tonight.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Got some good news from my landlord today.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm fine, just a little hungry.",
+          "label": 0,
+          "probability": 0.12
+        },
+        {
+          "text": "Today was quiet and peaceful.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm doing all right, thanks.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I enjoyed the class this morning.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I need to pick up groceries after work.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "The meeting got moved to three o'clock.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Can you remind me what time the bus leaves?",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm making pasta for dinner.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "The printer on the second floor is out of paper again.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I watched the game last night.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I have two chapters left to read for class.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "My phone battery is at forty percent.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I think it might rain later.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "We're painting the kitchen this weekend.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm going to call my mom later.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "The train was a few minutes late this morning.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm trying a new recipe tonight.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I need to renew my library books.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm wearing the blue jacket today.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I just got back from the dentist, everything was fine.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "My brother is visiting next month.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm thinking about getting a new laptop.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'll be working from home tomorrow.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "The coffee shop was crowded this morning.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm updating my resume.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "We have a quiz on Friday.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I parked on the third level.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm heading to the gym in an hour.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm not sure what to have for dinner yet.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm not sad at all, just thinking.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I was stressed last week but it's sorted now.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I used to feel anxious about exams, but not anymore.",
+          "label": 0,
+          "probability": 0.9
+        },
+        {
+          "text": "That horror movie was so scary, I loved it.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm tired, but it's the good kind of tired after hiking.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "My friend is having a rough time, so I'm bringing her soup.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "The book is about grief, and it's beautifully written.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I was nervous before the presentation, then it went fine.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I cried at the wedding because I was so happy.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "This spicy food is killing me, it's so good.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm a bit annoyed the store was out of oat milk.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "No complaints, other than the traffic.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm not worried about it anymore.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "We talked about sad songs in music class today.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel better than I have in months.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "The news was depressing, but I'm doing fine myself.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I almost panicked when I lost my keys, then I found them in my pocket.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm writing an essay on anxiety for my psychology course.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "The dog was scared of the fireworks, but he's calm now.",
+          "label": 0,
+          "probability": 0.9
+        },
+        {
+          "text": "I'm bored, honestly, nothing is wrong.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Mondays are the worst, haha, but I'm fine.",
+          "label": 0,
+          "probability": 0.12
+        },
+        {
+          "text": "My exam is next week and I feel prepared.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm not upset, I just need a minute to think it over.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Things got hard for a while last year, but I'm in a good place now.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I was so angry at the referee, but it's just a game.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Kind of a long day, but nothing bad happened.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm a little tired, I'll go to bed early.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Work was a bit much today, but I'm okay.",
+          "label": 0,
+          "probability": 0.12
+        },
+        {
+          "text": "Eh, it's been an average week.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm a little stressed about the deadline, but I've got a plan.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm slightly nervous about my interview, but mostly excited.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Traffic was annoying, otherwise fine.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I have a mild headache, nothing serious.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "It's been a meh day, but I'm all right.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I could use more coffee, but I'm good.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm a bit sore from the gym.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm somewhat busy, but managing.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "It rained all day so I stayed in. It was fine.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "Not my most productive day, oh well.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm a little behind on emails, I'll catch up tomorrow.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I missed the bus, but the next one came quickly.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm a bit homesick sometimes, but I like it here.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm nervous-excited about moving next month.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "The week was tiring but I got everything done.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm low on sleep but feeling okay.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm a little bummed the concert was canceled.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "It was a frustrating meeting, but we sorted it out.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm fine, just need a quiet evening.",
+          "label": 0,
+          "probability": 0.12
+        },
+        {
+          "text": "I've been a bit distracted, nothing major.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm a little worried about the weather for the trip, that's all.",
+          "label": 0,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel awful and I don't know what to do.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm really scared right now.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I've been crying all day.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel so anxious I can't sit still.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I'm not okay.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "Everything feels hopeless lately.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I'm so angry I'm shaking.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel really depressed.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I'm having a panic attack.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I'm overwhelmed and I can't cope.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel terrible, my chest is tight and I can't breathe properly.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I'm so lonely it hurts.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I can't stop worrying about everything.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel like I'm falling apart.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm exhausted and miserable.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm terrified about what's going to happen.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel really low today.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "My anxiety is through the roof.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm heartbroken and I can't stop thinking about it.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm so stressed I feel sick.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I've been feeling empty for weeks.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm furious and I don't know how to calm down.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm frightened and I need help.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm sad all the time now.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "Please, I need someone to talk to, I'm struggling.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I haven't left my bed in three days.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "What's the point of even trying anymore.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I don't really see a future for myself.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "Nobody would notice if I just disappeared.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I keep messing everything up, I'm useless.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I haven't eaten properly in days, I just can't.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I lie awake every night with my heart racing.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I don't feel like myself anymore.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "Everyone would be better off without me.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I can't remember the last time I felt happy.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I just want everything to stop for a while.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm so tired of pretending I'm fine.",
+          "label": 1,
+          "probability": 0.12
+        },
+        {
+          "text": "I feel like a burden to everyone around me.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I can't focus on anything, my head is a mess.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I've stopped answering my friends' messages.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "Every little thing makes me want to scream.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel numb, like nothing matters.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I keep thinking something terrible is about to happen.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I don't know how much longer I can keep doing this.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I've been snapping at everyone and I hate myself for it.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "My hands won't stop shaking.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I wake up dreading every single day.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel trapped and there's no way out.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I just sit in my car after work because I can't face going inside.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I don't want to be here anymore.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "My body feels wrong and I'm really scared.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I'm in so much pain I can't think straight.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel dizzy and my heart is pounding and I'm frightened.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I've had a crushing headache for days and I'm worried.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I can't catch my breath and it's scaring me.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel sick to my stomach with worry.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I'm hurting and nobody believes me.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "My chest hurts every time I think about it.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I can't sleep and I feel like I'm going to collapse.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm shaking and I can't make it stop.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel faint and I'm all alone here.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "Everything aches and I'm so worn down.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm sweating and panicking and I don't know why.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "My stomach is in knots all the time from the stress.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel so unwell and I'm scared it's serious.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I'm not feeling well at all, please help.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I can't stop crying and my head is pounding.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel like I can't breathe when I'm at work.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I'm so tense my jaw hurts.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel like I'm going to throw up from nerves.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm trembling and my thoughts are racing.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I feel weak and hopeless.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "My heart won't slow down and I'm terrified.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm in pain and I'm really struggling to cope.",
+          "label": 1,
+          "probability": 0.9
+        },
+        {
+          "text": "I feel physically drained and emotionally broken.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I guess I'm just not doing great.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "Honestly, it's been a really rough week.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "Things at home are pretty bad right now.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I've been better, to be honest.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "It's a lot. It's just a lot.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I don't know, I'm just kind of struggling.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm hanging in there, barely.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm fine. I mean, not really.",
+          "label": 1,
+          "probability": 0.12
+        },
+        {
+          "text": "Work has been crushing me lately.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "My breakup has hit me harder than I thought.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I just feel off, and it's been weeks.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm getting by, but it's hard.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I lost my job and I don't know what to do.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "My dad is in the hospital and I'm a wreck.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I failed the exam and I feel like a failure.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "Things haven't been good since the move.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I keep telling people I'm okay but I'm not.",
+          "label": 1,
+          "probability": 0.12
+        },
+        {
+          "text": "I've been really on edge lately.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm just so done with everything.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I don't have anyone to talk to about this.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "Can't shake this heavy feeling.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm barely keeping it together.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "It's been a hard few months and it's not getting better.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm tired all the time and I don't enjoy anything.",
+          "label": 1,
+          "probability": 0.2
+        },
+        {
+          "text": "I'm worried I'm losing control.",
+          "label": 1,
+          "probability": 0.2
+        }
+      ]
+    },
+    "roberta": {
+      "balanced_accuracy": 0.8,
+      "macro_f1": 0.8,
+      "auroc": 0.8625,
+      "recall": 0.79,
+      "specificity": 0.81,
+      "accuracy_by_category": {
+        "calm_mild": 0.64,
+        "calm_neutral": 1.0,
+        "calm_plain": 1.0,
+        "calm_tricky": 0.6,
+        "distress_indirect": 0.6,
+        "distress_plain": 0.96,
+        "distress_somatic": 1.0,
+        "distress_understated": 0.6
+      },
+      "predictions": [
+        {
+          "text": "I'm doing pretty well today, thanks for asking.",
+          "label": 0,
+          "probability": 0.0103
+        },
+        {
+          "text": "Had a good lunch with my sister and now I'm back at my desk.",
+          "label": 0,
+          "probability": 0.0222
+        },
+        {
+          "text": "Everything's fine, just a normal Tuesday.",
+          "label": 0,
+          "probability": 0.019
+        },
+        {
+          "text": "I slept well and feel rested.",
+          "label": 0,
+          "probability": 0.0289
+        },
+        {
+          "text": "Work was busy but in a good way.",
+          "label": 0,
+          "probability": 0.0159
+        },
+        {
+          "text": "I'm looking forward to the weekend.",
+          "label": 0,
+          "probability": 0.0131
+        },
+        {
+          "text": "Just finished a run and I feel great.",
+          "label": 0,
+          "probability": 0.0181
+        },
+        {
+          "text": "Nothing much going on, I'm relaxed.",
+          "label": 0,
+          "probability": 0.0316
+        },
+        {
+          "text": "I'm happy with how the project turned out.",
+          "label": 0,
+          "probability": 0.0252
+        },
+        {
+          "text": "We had a nice dinner and watched a movie.",
+          "label": 0,
+          "probability": 0.018
+        },
+        {
+          "text": "Honestly, I feel calm and settled right now.",
+          "label": 0,
+          "probability": 0.0183
+        },
+        {
+          "text": "The exam went better than I expected.",
+          "label": 0,
+          "probability": 0.0503
+        },
+        {
+          "text": "I'm okay, just reading a book.",
+          "label": 0,
+          "probability": 0.018
+        },
+        {
+          "text": "My week has been pretty smooth.",
+          "label": 0,
+          "probability": 0.0222
+        },
+        {
+          "text": "I'm in a good mood, the weather is lovely.",
+          "label": 0,
+          "probability": 0.015
+        },
+        {
+          "text": "I finally cleaned my room and it feels good.",
+          "label": 0,
+          "probability": 0.0322
+        },
+        {
+          "text": "Things are going fine with my new job.",
+          "label": 0,
+          "probability": 0.0207
+        },
+        {
+          "text": "I'm chilling at home with my cat.",
+          "label": 0,
+          "probability": 0.069
+        },
+        {
+          "text": "I feel content, nothing to complain about.",
+          "label": 0,
+          "probability": 0.0668
+        },
+        {
+          "text": "I'm excited to see my friends tonight.",
+          "label": 0,
+          "probability": 0.0252
+        },
+        {
+          "text": "Got some good news from my landlord today.",
+          "label": 0,
+          "probability": 0.0237
+        },
+        {
+          "text": "I'm fine, just a little hungry.",
+          "label": 0,
+          "probability": 0.0465
+        },
+        {
+          "text": "Today was quiet and peaceful.",
+          "label": 0,
+          "probability": 0.0252
+        },
+        {
+          "text": "I'm doing all right, thanks.",
+          "label": 0,
+          "probability": 0.0134
+        },
+        {
+          "text": "I enjoyed the class this morning.",
+          "label": 0,
+          "probability": 0.0237
+        },
+        {
+          "text": "I need to pick up groceries after work.",
+          "label": 0,
+          "probability": 0.0423
+        },
+        {
+          "text": "The meeting got moved to three o'clock.",
+          "label": 0,
+          "probability": 0.0166
+        },
+        {
+          "text": "Can you remind me what time the bus leaves?",
+          "label": 0,
+          "probability": 0.0185
+        },
+        {
+          "text": "I'm making pasta for dinner.",
+          "label": 0,
+          "probability": 0.0184
+        },
+        {
+          "text": "The printer on the second floor is out of paper again.",
+          "label": 0,
+          "probability": 0.455
+        },
+        {
+          "text": "I watched the game last night.",
+          "label": 0,
+          "probability": 0.0156
+        },
+        {
+          "text": "I have two chapters left to read for class.",
+          "label": 0,
+          "probability": 0.019
+        },
+        {
+          "text": "My phone battery is at forty percent.",
+          "label": 0,
+          "probability": 0.0909
+        },
+        {
+          "text": "I think it might rain later.",
+          "label": 0,
+          "probability": 0.0235
+        },
+        {
+          "text": "We're painting the kitchen this weekend.",
+          "label": 0,
+          "probability": 0.0119
+        },
+        {
+          "text": "I'm going to call my mom later.",
+          "label": 0,
+          "probability": 0.0149
+        },
+        {
+          "text": "The train was a few minutes late this morning.",
+          "label": 0,
+          "probability": 0.0978
+        },
+        {
+          "text": "I'm trying a new recipe tonight.",
+          "label": 0,
+          "probability": 0.0179
+        },
+        {
+          "text": "I need to renew my library books.",
+          "label": 0,
+          "probability": 0.0353
+        },
+        {
+          "text": "I'm wearing the blue jacket today.",
+          "label": 0,
+          "probability": 0.0112
+        },
+        {
+          "text": "I just got back from the dentist, everything was fine.",
+          "label": 0,
+          "probability": 0.0366
+        },
+        {
+          "text": "My brother is visiting next month.",
+          "label": 0,
+          "probability": 0.0138
+        },
+        {
+          "text": "I'm thinking about getting a new laptop.",
+          "label": 0,
+          "probability": 0.0181
+        },
+        {
+          "text": "I'll be working from home tomorrow.",
+          "label": 0,
+          "probability": 0.013
+        },
+        {
+          "text": "The coffee shop was crowded this morning.",
+          "label": 0,
+          "probability": 0.0373
+        },
+        {
+          "text": "I'm updating my resume.",
+          "label": 0,
+          "probability": 0.0188
+        },
+        {
+          "text": "We have a quiz on Friday.",
+          "label": 0,
+          "probability": 0.0137
+        },
+        {
+          "text": "I parked on the third level.",
+          "label": 0,
+          "probability": 0.0114
+        },
+        {
+          "text": "I'm heading to the gym in an hour.",
+          "label": 0,
+          "probability": 0.0163
+        },
+        {
+          "text": "I'm not sure what to have for dinner yet.",
+          "label": 0,
+          "probability": 0.0707
+        },
+        {
+          "text": "I'm not sad at all, just thinking.",
+          "label": 0,
+          "probability": 0.1367
+        },
+        {
+          "text": "I was stressed last week but it's sorted now.",
+          "label": 0,
+          "probability": 0.1281
+        },
+        {
+          "text": "I used to feel anxious about exams, but not anymore.",
+          "label": 0,
+          "probability": 0.8738
+        },
+        {
+          "text": "That horror movie was so scary, I loved it.",
+          "label": 0,
+          "probability": 0.4083
+        },
+        {
+          "text": "I'm tired, but it's the good kind of tired after hiking.",
+          "label": 0,
+          "probability": 0.0608
+        },
+        {
+          "text": "My friend is having a rough time, so I'm bringing her soup.",
+          "label": 0,
+          "probability": 0.5124
+        },
+        {
+          "text": "The book is about grief, and it's beautifully written.",
+          "label": 0,
+          "probability": 0.4946
+        },
+        {
+          "text": "I was nervous before the presentation, then it went fine.",
+          "label": 0,
+          "probability": 0.8436
+        },
+        {
+          "text": "I cried at the wedding because I was so happy.",
+          "label": 0,
+          "probability": 0.162
+        },
+        {
+          "text": "This spicy food is killing me, it's so good.",
+          "label": 0,
+          "probability": 0.095
+        },
+        {
+          "text": "I'm a bit annoyed the store was out of oat milk.",
+          "label": 0,
+          "probability": 1.0
+        },
+        {
+          "text": "No complaints, other than the traffic.",
+          "label": 0,
+          "probability": 0.1082
+        },
+        {
+          "text": "I'm not worried about it anymore.",
+          "label": 0,
+          "probability": 0.1374
+        },
+        {
+          "text": "We talked about sad songs in music class today.",
+          "label": 0,
+          "probability": 0.8857
+        },
+        {
+          "text": "I feel better than I have in months.",
+          "label": 0,
+          "probability": 0.0335
+        },
+        {
+          "text": "The news was depressing, but I'm doing fine myself.",
+          "label": 0,
+          "probability": 1.0
+        },
+        {
+          "text": "I almost panicked when I lost my keys, then I found them in my pocket.",
+          "label": 0,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm writing an essay on anxiety for my psychology course.",
+          "label": 0,
+          "probability": 0.3438
+        },
+        {
+          "text": "The dog was scared of the fireworks, but he's calm now.",
+          "label": 0,
+          "probability": 0.5077
+        },
+        {
+          "text": "I'm bored, honestly, nothing is wrong.",
+          "label": 0,
+          "probability": 0.982
+        },
+        {
+          "text": "Mondays are the worst, haha, but I'm fine.",
+          "label": 0,
+          "probability": 0.3848
+        },
+        {
+          "text": "My exam is next week and I feel prepared.",
+          "label": 0,
+          "probability": 0.0158
+        },
+        {
+          "text": "I'm not upset, I just need a minute to think it over.",
+          "label": 0,
+          "probability": 0.0751
+        },
+        {
+          "text": "Things got hard for a while last year, but I'm in a good place now.",
+          "label": 0,
+          "probability": 0.078
+        },
+        {
+          "text": "I was so angry at the referee, but it's just a game.",
+          "label": 0,
+          "probability": 1.0
+        },
+        {
+          "text": "Kind of a long day, but nothing bad happened.",
+          "label": 0,
+          "probability": 0.1242
+        },
+        {
+          "text": "I'm a little tired, I'll go to bed early.",
+          "label": 0,
+          "probability": 0.1237
+        },
+        {
+          "text": "Work was a bit much today, but I'm okay.",
+          "label": 0,
+          "probability": 0.0616
+        },
+        {
+          "text": "Eh, it's been an average week.",
+          "label": 0,
+          "probability": 0.0879
+        },
+        {
+          "text": "I'm a little stressed about the deadline, but I've got a plan.",
+          "label": 0,
+          "probability": 0.2539
+        },
+        {
+          "text": "I'm slightly nervous about my interview, but mostly excited.",
+          "label": 0,
+          "probability": 0.3566
+        },
+        {
+          "text": "Traffic was annoying, otherwise fine.",
+          "label": 0,
+          "probability": 1.0
+        },
+        {
+          "text": "I have a mild headache, nothing serious.",
+          "label": 0,
+          "probability": 0.4593
+        },
+        {
+          "text": "It's been a meh day, but I'm all right.",
+          "label": 0,
+          "probability": 0.2667
+        },
+        {
+          "text": "I could use more coffee, but I'm good.",
+          "label": 0,
+          "probability": 0.0132
+        },
+        {
+          "text": "I'm a bit sore from the gym.",
+          "label": 0,
+          "probability": 0.6998
+        },
+        {
+          "text": "I'm somewhat busy, but managing.",
+          "label": 0,
+          "probability": 0.0566
+        },
+        {
+          "text": "It rained all day so I stayed in. It was fine.",
+          "label": 0,
+          "probability": 0.0176
+        },
+        {
+          "text": "Not my most productive day, oh well.",
+          "label": 0,
+          "probability": 0.9509
+        },
+        {
+          "text": "I'm a little behind on emails, I'll catch up tomorrow.",
+          "label": 0,
+          "probability": 0.3608
+        },
+        {
+          "text": "I missed the bus, but the next one came quickly.",
+          "label": 0,
+          "probability": 0.7582
+        },
+        {
+          "text": "I'm a bit homesick sometimes, but I like it here.",
+          "label": 0,
+          "probability": 0.4356
+        },
+        {
+          "text": "I'm nervous-excited about moving next month.",
+          "label": 0,
+          "probability": 0.6817
+        },
+        {
+          "text": "The week was tiring but I got everything done.",
+          "label": 0,
+          "probability": 0.1721
+        },
+        {
+          "text": "I'm low on sleep but feeling okay.",
+          "label": 0,
+          "probability": 0.4953
+        },
+        {
+          "text": "I'm a little bummed the concert was canceled.",
+          "label": 0,
+          "probability": 1.0
+        },
+        {
+          "text": "It was a frustrating meeting, but we sorted it out.",
+          "label": 0,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm fine, just need a quiet evening.",
+          "label": 0,
+          "probability": 0.0317
+        },
+        {
+          "text": "I've been a bit distracted, nothing major.",
+          "label": 0,
+          "probability": 0.6118
+        },
+        {
+          "text": "I'm a little worried about the weather for the trip, that's all.",
+          "label": 0,
+          "probability": 0.8077
+        },
+        {
+          "text": "I feel awful and I don't know what to do.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm really scared right now.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I've been crying all day.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I feel so anxious I can't sit still.",
+          "label": 1,
+          "probability": 0.9826
+        },
+        {
+          "text": "I'm not okay.",
+          "label": 1,
+          "probability": 0.3319
+        },
+        {
+          "text": "Everything feels hopeless lately.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm so angry I'm shaking.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I feel really depressed.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm having a panic attack.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm overwhelmed and I can't cope.",
+          "label": 1,
+          "probability": 0.9234
+        },
+        {
+          "text": "I feel terrible, my chest is tight and I can't breathe properly.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm so lonely it hurts.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I can't stop worrying about everything.",
+          "label": 1,
+          "probability": 0.803
+        },
+        {
+          "text": "I feel like I'm falling apart.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm exhausted and miserable.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm terrified about what's going to happen.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I feel really low today.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "My anxiety is through the roof.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm heartbroken and I can't stop thinking about it.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm so stressed I feel sick.",
+          "label": 1,
+          "probability": 0.816
+        },
+        {
+          "text": "I've been feeling empty for weeks.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm furious and I don't know how to calm down.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm frightened and I need help.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm sad all the time now.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "Please, I need someone to talk to, I'm struggling.",
+          "label": 1,
+          "probability": 0.5317
+        },
+        {
+          "text": "I haven't left my bed in three days.",
+          "label": 1,
+          "probability": 0.0264
+        },
+        {
+          "text": "What's the point of even trying anymore.",
+          "label": 1,
+          "probability": 0.206
+        },
+        {
+          "text": "I don't really see a future for myself.",
+          "label": 1,
+          "probability": 0.5075
+        },
+        {
+          "text": "Nobody would notice if I just disappeared.",
+          "label": 1,
+          "probability": 0.0374
+        },
+        {
+          "text": "I keep messing everything up, I'm useless.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I haven't eaten properly in days, I just can't.",
+          "label": 1,
+          "probability": 0.9749
+        },
+        {
+          "text": "I lie awake every night with my heart racing.",
+          "label": 1,
+          "probability": 0.6487
+        },
+        {
+          "text": "I don't feel like myself anymore.",
+          "label": 1,
+          "probability": 0.8905
+        },
+        {
+          "text": "Everyone would be better off without me.",
+          "label": 1,
+          "probability": 0.0261
+        },
+        {
+          "text": "I can't remember the last time I felt happy.",
+          "label": 1,
+          "probability": 0.0618
+        },
+        {
+          "text": "I just want everything to stop for a while.",
+          "label": 1,
+          "probability": 0.1593
+        },
+        {
+          "text": "I'm so tired of pretending I'm fine.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I feel like a burden to everyone around me.",
+          "label": 1,
+          "probability": 0.9735
+        },
+        {
+          "text": "I can't focus on anything, my head is a mess.",
+          "label": 1,
+          "probability": 0.9287
+        },
+        {
+          "text": "I've stopped answering my friends' messages.",
+          "label": 1,
+          "probability": 0.2514
+        },
+        {
+          "text": "Every little thing makes me want to scream.",
+          "label": 1,
+          "probability": 0.7305
+        },
+        {
+          "text": "I feel numb, like nothing matters.",
+          "label": 1,
+          "probability": 0.9124
+        },
+        {
+          "text": "I keep thinking something terrible is about to happen.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I don't know how much longer I can keep doing this.",
+          "label": 1,
+          "probability": 0.0854
+        },
+        {
+          "text": "I've been snapping at everyone and I hate myself for it.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "My hands won't stop shaking.",
+          "label": 1,
+          "probability": 0.4908
+        },
+        {
+          "text": "I wake up dreading every single day.",
+          "label": 1,
+          "probability": 0.9323
+        },
+        {
+          "text": "I feel trapped and there's no way out.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I just sit in my car after work because I can't face going inside.",
+          "label": 1,
+          "probability": 0.2039
+        },
+        {
+          "text": "I don't want to be here anymore.",
+          "label": 1,
+          "probability": 0.6302
+        },
+        {
+          "text": "My body feels wrong and I'm really scared.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm in so much pain I can't think straight.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I feel dizzy and my heart is pounding and I'm frightened.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I've had a crushing headache for days and I'm worried.",
+          "label": 1,
+          "probability": 0.8601
+        },
+        {
+          "text": "I can't catch my breath and it's scaring me.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I feel sick to my stomach with worry.",
+          "label": 1,
+          "probability": 0.7764
+        },
+        {
+          "text": "I'm hurting and nobody believes me.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "My chest hurts every time I think about it.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I can't sleep and I feel like I'm going to collapse.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm shaking and I can't make it stop.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I feel faint and I'm all alone here.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "Everything aches and I'm so worn down.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm sweating and panicking and I don't know why.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "My stomach is in knots all the time from the stress.",
+          "label": 1,
+          "probability": 0.9418
+        },
+        {
+          "text": "I feel so unwell and I'm scared it's serious.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm not feeling well at all, please help.",
+          "label": 1,
+          "probability": 0.9375
+        },
+        {
+          "text": "I can't stop crying and my head is pounding.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I feel like I can't breathe when I'm at work.",
+          "label": 1,
+          "probability": 0.8526
+        },
+        {
+          "text": "I'm so tense my jaw hurts.",
+          "label": 1,
+          "probability": 0.9866
+        },
+        {
+          "text": "I feel like I'm going to throw up from nerves.",
+          "label": 1,
+          "probability": 0.8919
+        },
+        {
+          "text": "I'm trembling and my thoughts are racing.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I feel weak and hopeless.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "My heart won't slow down and I'm terrified.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I'm in pain and I'm really struggling to cope.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I feel physically drained and emotionally broken.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I guess I'm just not doing great.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "Honestly, it's been a really rough week.",
+          "label": 1,
+          "probability": 0.9486
+        },
+        {
+          "text": "Things at home are pretty bad right now.",
+          "label": 1,
+          "probability": 0.9952
+        },
+        {
+          "text": "I've been better, to be honest.",
+          "label": 1,
+          "probability": 0.0298
+        },
+        {
+          "text": "It's a lot. It's just a lot.",
+          "label": 1,
+          "probability": 0.0127
+        },
+        {
+          "text": "I don't know, I'm just kind of struggling.",
+          "label": 1,
+          "probability": 0.3931
+        },
+        {
+          "text": "I'm hanging in there, barely.",
+          "label": 1,
+          "probability": 0.0918
+        },
+        {
+          "text": "I'm fine. I mean, not really.",
+          "label": 1,
+          "probability": 0.0374
+        },
+        {
+          "text": "Work has been crushing me lately.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "My breakup has hit me harder than I thought.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I just feel off, and it's been weeks.",
+          "label": 1,
+          "probability": 0.2864
+        },
+        {
+          "text": "I'm getting by, but it's hard.",
+          "label": 1,
+          "probability": 0.5371
+        },
+        {
+          "text": "I lost my job and I don't know what to do.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "My dad is in the hospital and I'm a wreck.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "I failed the exam and I feel like a failure.",
+          "label": 1,
+          "probability": 1.0
+        },
+        {
+          "text": "Things haven't been good since the move.",
+          "label": 1,
+          "probability": 0.9983
+        },
+        {
+          "text": "I keep telling people I'm okay but I'm not.",
+          "label": 1,
+          "probability": 0.2144
+        },
+        {
+          "text": "I've been really on edge lately.",
+          "label": 1,
+          "probability": 0.1168
+        },
+        {
+          "text": "I'm just so done with everything.",
+          "label": 1,
+          "probability": 0.417
+        },
+        {
+          "text": "I don't have anyone to talk to about this.",
+          "label": 1,
+          "probability": 0.619
+        },
+        {
+          "text": "Can't shake this heavy feeling.",
+          "label": 1,
+          "probability": 0.5415
+        },
+        {
+          "text": "I'm barely keeping it together.",
+          "label": 1,
+          "probability": 0.4896
+        },
+        {
+          "text": "It's been a hard few months and it's not getting better.",
+          "label": 1,
+          "probability": 0.9481
+        },
+        {
+          "text": "I'm tired all the time and I don't enjoy anything.",
+          "label": 1,
+          "probability": 0.8002
+        },
+        {
+          "text": "I'm worried I'm losing control.",
+          "label": 1,
+          "probability": 1.0
+        }
+      ]
+    }
+  }
+}
