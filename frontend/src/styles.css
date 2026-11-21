@@ -76,6 +76,7 @@ footer { margin-top: 28px; color: var(--muted); font-size: 0.85rem; }
 .page-head { max-width: 760px; margin-bottom: 22px; }
 .train-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
 .train-bar .fine { max-width: 46ch; }
+.train-bar .file-btn { align-self: center; border: 1px solid transparent; }
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.14em;
