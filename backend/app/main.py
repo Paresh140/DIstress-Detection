@@ -319,6 +319,17 @@ KAGGLE_RESULTS = (
     "cross_corpus_report.json",
     "reader_report.json",
     "comparison.md",
+    # Week experiments (kaggle/DistressNet_Experiments.ipynb)
+    "enrollment_report.json",
+    "seed_report.json",
+    "ece_report.json",
+    "reliability.png",
+    "asr_report.json",
+    "latency_report.json",
+    "latency_report_cpu.json",
+    "pipeline_report.json",
+    "safety_report.json",
+    "safety_heldout_report.json",
 )
 HEAD_KEYS = {"state", "n_layers", "dim", "mean", "std", "summary"}
 

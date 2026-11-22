@@ -28,6 +28,7 @@ import wave
 from pathlib import Path
 
 import numpy as np
+import torch
 
 from . import llm
 from .judge import decide
@@ -60,7 +61,7 @@ def _time(fn, runs: int) -> dict:
     return {"median_s": round(float(np.median(times)), 4), "p90_s": round(float(np.percentile(times, 90)), 4), "runs": runs}
 
 
-def run(clip: Path | None = None, runs: int = 5) -> dict:
+def run(clip: Path | None = None, runs: int = 5, out: str = "latency_report.json") -> dict:
     if clip is None:
         found = sorted((ROOT / "data" / "ravdess").rglob("03-01-04-*-21.wav"))
         clip = found[0] if found else _noise_clip()
@@ -93,6 +94,7 @@ def run(clip: Path | None = None, runs: int = 5) -> dict:
     timed = [s["median_s"] for s in stages.values() if "median_s" in s]
     report = {
         "machine": f"{platform.system()} {platform.machine()}, {platform.processor() or 'cpu'}",
+        "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "none",
         "clip": clip.name,
         "stages": stages,
         "total_median_s": round(sum(timed), 4),
@@ -100,7 +102,7 @@ def run(clip: Path | None = None, runs: int = 5) -> dict:
         "note": "Stages run one after another in the studio, so the total is the sum of the medians. ASR and the voice model can run in parallel; they do not today.",
     }
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
-    (ARTIFACTS / "latency_report.json").write_text(json.dumps(report, indent=2))
+    (ARTIFACTS / out).write_text(json.dumps(report, indent=2))
     for name, s in stages.items():
         print(f"  {name:<8} " + (f"{s['median_s'] * 1000:8.1f} ms median" if "median_s" in s else f"skipped: {s['skipped']}"))
     print(f"  total    {report['total_median_s'] * 1000:8.1f} ms" + ("" if report["complete"] else " (incomplete: some stages skipped)"))
@@ -111,5 +113,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--clip", type=Path)
     parser.add_argument("--runs", type=int, default=5)
+    parser.add_argument("--out", default="latency_report.json", help="report name under artifacts/")
     args = parser.parse_args()
-    run(args.clip, args.runs)
+    run(args.clip, args.runs, args.out)
