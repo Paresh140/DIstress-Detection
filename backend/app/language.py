@@ -120,6 +120,10 @@ def _llm_read(transcript: str) -> dict | None:
         probability = 0.5
     probability = min(1.0, max(0.0, probability))
     if label == "calm":
+        # Small models often give confidence in their label instead of P(distress).
+        # A calm label above 0.5 is read that way, or every calm sentence would sit at the check-in line.
+        if probability > 0.5:
+            probability = 1.0 - probability
         probability = min(probability, 0.45)
     return {
         "label": label,

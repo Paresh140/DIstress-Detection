@@ -152,8 +152,10 @@ def split_egemaps(train: list, val: list, test: list, features: dict[str, np.nda
     }
 
 
-def split_ssl(train: list, val: list, test: list, features: dict[str, np.ndarray], head: str = DEFAULT_HEAD, epochs: int = HEAD_EPOCHS) -> dict:
-    fitted = fit_head(_stack(train, features), targets(train, head), _stack(val, features), targets(val, head), epochs=epochs, head=head)
+def split_ssl(
+    train: list, val: list, test: list, features: dict[str, np.ndarray], head: str = DEFAULT_HEAD, epochs: int = HEAD_EPOCHS, seed: int = SEED
+) -> dict:
+    fitted = fit_head(_stack(train, features), targets(train, head), _stack(val, features), targets(val, head), epochs=epochs, head=head, seed=seed)
     return {
         "selected": {
             "selected_epoch": fitted["epoch"],
@@ -244,20 +246,24 @@ def model_key(encoder: str, head: str = DEFAULT_HEAD) -> str:
     return encoder_key(encoder) + ("" if head == DEFAULT_HEAD else f"/{head}")
 
 
-def run_ssl(clips: list, plan: list[dict], encoder: str, head: str = DEFAULT_HEAD, epochs: int = HEAD_EPOCHS) -> dict:
+def run_ssl(clips: list, plan: list[dict], encoder: str, head: str = DEFAULT_HEAD, epochs: int = HEAD_EPOCHS, seed: int = SEED) -> dict:
     paths = [str(clip.path) for clip in clips]
     features = dict(zip(paths, embed_clips(paths, encoder, cache_path(ARTIFACTS, encoder))))
     name = model_key(encoder, head)
     rows = []
     for k, split in enumerate(plan, start=1):
         test = take(clips, split["test"])
-        scored = score_split(split_ssl(take(clips, split["train"]), take(clips, split["val"]), test, features, head, epochs), test)
+        scored = score_split(split_ssl(take(clips, split["train"]), take(clips, split["val"]), test, features, head, epochs, seed), test)
         top = int(np.argmax(scored["selected"]["layer_weights"]))
         print(
             f"{name} fold {k}: epoch {scored['selected']['selected_epoch']}  test bal {scored['raw']['balanced_accuracy']:.3f}  "
             f"calibrated {scored['calibrated']['balanced_accuracy']:.3f}  T {scored['temperature']:.2f}  heaviest layer {top}"
         )
-        rows.append(_fold_row(k, split, test, scored))
+        row = _fold_row(k, split, test, scored)
+        # Calibrated P(distress) per test clip, so ECE can be recomputed with other bins later.
+        row["test_labels"] = labels(test).tolist()
+        row["test_probability"] = [round(float(p), 4) for p in scored["test_probability"]]
+        rows.append(row)
     pool = HEADS[head]["pool"]
     classes = HEADS[head]["classes"]
     return _result(

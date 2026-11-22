@@ -1,7 +1,8 @@
 """Studio assistant. Answers from the training report and the latest reading.
 
 After a check-in or support reading, messages go to the support conversation
-in agent.py instead, which never shows scores to the person.
+in agent.py instead, which never shows scores to the person. A message that
+asks to talk, or says how the person feels, starts that conversation too.
 """
 
 from __future__ import annotations
@@ -80,6 +81,14 @@ STUDIO_WORDS = (
 )
 
 
+# A typed message that opens the support conversation without a reading first.
+TALK = re.compile(r"\b(want|need|like|have) to talk\b|\bcan we talk\b|\btalk about how i\b|\bi need (help|support|someone)\b")
+FEELING = re.compile(
+    r"\bi(?:'m| am| feel| have been| 've been| was)\b[^.?!]{0,30}\b(stressed|anxious|sad|down|lonely|depressed|overwhelmed|scared|afraid|worried|angry|upset|tired|exhausted|hopeless|empty|lost|struggling|not (okay|ok|well|good|great))\b"
+    r"|\b(having|had) a (hard|rough|bad|tough) (day|time|week)\b|\bcan'?t (sleep|focus|cope)\b"
+)
+
+
 def respond(
     message: str,
     report: dict | None,
@@ -94,10 +103,22 @@ def respond(
     studio_question = _has(lower, STUDIO_WORDS)
     if state is None and judge.get("ask"):
         state = agent.new_state("check-in" if judge.get("band") == "check-in" else "support")
+    if (state is None or not state.get("active")) and text and not studio_question:
+        if TALK.search(lower):
+            state = agent.new_state("support", step="open")
+        elif FEELING.search(lower.replace("’", "'")):
+            state = agent.new_state("support")
     if text and state is not None and state.get("active") and not studio_question:
         return agent.respond(text, state, history)
     if text and is_crisis(lower):
-        return CRISIS_CARE, {**(state or agent.new_state()), "active": True, "risk": "high", "step": "crisis"}
+        return CRISIS_CARE, {
+            **(state or agent.new_state()),
+            "active": True,
+            "risk": "high",
+            "step": "crisis",
+            "card": agent.CONTACTS,
+            "prompts": agent.CRISIS_PROMPTS,
+        }
     return reply(message, report, analysis, history), state
 
 
@@ -271,8 +292,8 @@ def prompts(analysis: dict | None) -> list[str]:
             "What are the limits?",
         ]
     return [
+        "I'd like to talk about how I'm feeling",
         "How was the network trained?",
         "What does each layer do?",
-        "Which actors were held out?",
         "What are the limits?",
     ]

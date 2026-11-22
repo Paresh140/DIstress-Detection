@@ -1,4 +1,4 @@
-"""Local files, or the Google Drive copy once Colab has written one."""
+"""Where the app reads clips and saved results: data/ravdess and backend/artifacts."""
 
 from __future__ import annotations
 
@@ -9,25 +9,9 @@ LOCAL_RAVDESS = ROOT / "data" / "ravdess"
 LOCAL_ARTIFACTS = ROOT / "backend" / "artifacts"
 
 
-def drive_folder() -> Path | None:
-    cloud = Path.home() / "Library/CloudStorage"
-    if not cloud.is_dir():
-        return None
-    matches = sorted(cloud.glob("GoogleDrive-*/My Drive/DistressNet"))
-    return matches[0] if matches else None
-
-
 def clip_root() -> Path:
-    folder = drive_folder()
-    if folder is not None and any((folder / "ravdess").glob("Actor_*/*.wav")):
-        return folder / "ravdess"
     return LOCAL_RAVDESS
 
 
 def artifact_file(name: str) -> Path:
-    folder = drive_folder()
-    if folder is not None:
-        remote = folder / "artifacts" / name
-        if remote.is_file():
-            return remote
     return LOCAL_ARTIFACTS / name
