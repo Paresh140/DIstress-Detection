@@ -129,7 +129,6 @@ export type TrainingReport = {
   threshold: number;
   augmentation: string;
   narrative: string;
-  logged_only?: boolean;
   label: { distress: string[]; calm: string[]; excluded: string[] };
   split: {
     train_actors: number[];
@@ -163,4 +162,10 @@ export type Sample = {
   truth: string;
 };
 
-export type ChatMessage = { role: "user" | "assistant"; text: string };
+export type ChatCard =
+  | { type: "breathing"; inhale: number; exhale: number; rounds: number }
+  | { type: "grounding"; steps: string[] }
+  | { type: "mood"; question: string }
+  | { type: "resources"; items: { name: string; detail: string; href?: string; action?: string }[] };
+
+export type ChatMessage = { role: "user" | "assistant"; text: string; card?: ChatCard | null; spoken?: boolean };

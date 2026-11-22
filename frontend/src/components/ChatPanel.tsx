@@ -1,8 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { sendChat } from "../api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { sendChat, sendVoiceChat } from "../api";
 import type { Analysis, ChatMessage } from "../types";
+import { MicRecorder, canSpeak, speak, stopSpeaking } from "../voice";
+import { ChatCardView } from "./ChatCards";
+
+const MAX_TURN_SECONDS = 30;
 
 const STARTERS = [
+  "I'd like to talk about how I'm feeling",
   "How was the network trained?",
   "What does each layer do?",
   "Which actors were held out?",
@@ -10,7 +15,7 @@ const STARTERS = [
 ];
 
 const GREETING =
-  "I can walk through a reading, a layer, or the training run. I answer from this model, and I do not diagnose.";
+  "Hi, I'm here if you'd like to talk about how you're feeling, and I can also walk through a reading, a layer, or the training run. I'm not a counselor and I don't diagnose.";
 
 export function ChatPanel({ analysis }: { analysis: Analysis | null }) {
   const [open, setOpen] = useState(false);
@@ -24,6 +29,22 @@ export function ChatPanel({ analysis }: { analysis: Analysis | null }) {
   const [noticed, setNoticed] = useState("");
   // The support conversation's state (step, risk, what was shared). The server owns it; we only carry it.
   const support = useRef<Record<string, unknown> | null>(null);
+  const sending = useRef(false);
+  const recorder = useRef<MicRecorder | null>(null);
+  const [listening, setListening] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(canSpeak);
+  const [speaking, setSpeaking] = useState(false);
+  const [micError, setMicError] = useState("");
+  // Replies are read aloud once the person is talking by voice (or the chat was opened by a recording).
+  const talking = useRef(false);
+  const voiceOnRef = useRef(voiceOn);
+  voiceOnRef.current = voiceOn;
+
+  const say = useCallback((text: string) => {
+    if (!voiceOnRef.current || !talking.current || !canSpeak) return;
+    setSpeaking(true);
+    void speak(text).finally(() => setSpeaking(false));
+  }, []);
 
   const question = analysis?.judge?.ask ? analysis.judge.question : "";
   const waiting = Boolean(question && noticed !== question);
@@ -48,10 +69,28 @@ export function ChatPanel({ analysis }: { analysis: Analysis | null }) {
   }, [open]);
 
   useEffect(() => {
+    if (open) return;
+    stopSpeaking();
+    recorder.current?.release();
+    recorder.current = null;
+    setListening(false);
+  }, [open]);
+
+  useEffect(() => () => {
+    stopSpeaking();
+    recorder.current?.release();
+  }, []);
+
+  useEffect(() => {
     if (analysis?.judge?.ask && question && asked.current !== question) {
       asked.current = question;
       support.current = null;
       setMessages((current) => [...current, { role: "assistant", text: question }]);
+      // Opened by a recording: answer in kind, out loud.
+      if (analysis.file && analysis.file !== "words") {
+        talking.current = true;
+        say(question);
+      }
       setPrompts(
         analysis.judge.band === "check-in"
           ? ["I'm okay, thanks", "Not great, honestly", "Why are you asking?"]
@@ -66,9 +105,10 @@ export function ChatPanel({ analysis }: { analysis: Analysis | null }) {
     }
   }, [analysis, question]);
 
-  async function ask(text: string) {
+  const ask = useCallback(async (text: string) => {
     const message = text.trim();
-    if (!message || busy) return;
+    if (!message || sending.current) return;
+    sending.current = true;
     setOpen(true);
     setDraft("");
     const prior = messages;
@@ -77,17 +117,86 @@ export function ChatPanel({ analysis }: { analysis: Analysis | null }) {
     try {
       const result = await sendChat(message, analysis, prior, support.current);
       support.current = result.state;
-      setMessages((current) => [...current, { role: "assistant", text: result.reply }]);
+      setMessages((current) => [...current, { role: "assistant", text: result.reply, card: result.card }]);
       setPrompts(result.prompts);
+      say(result.reply);
     } catch (error) {
       setMessages((current) => [
         ...current,
         { role: "assistant", text: error instanceof Error ? error.message : "The assistant could not answer." },
       ]);
     } finally {
+      sending.current = false;
       setBusy(false);
     }
-  }
+  }, [analysis, messages, say]);
+
+  const sendTurn = useCallback(async (file: File) => {
+    if (sending.current) return;
+    sending.current = true;
+    setBusy(true);
+    const prior = messages;
+    try {
+      const result = await sendVoiceChat(file, analysis, prior, support.current);
+      support.current = result.state;
+      setMessages((current) => [
+        ...current,
+        ...(result.heard ? [{ role: "user" as const, text: result.heard, spoken: true }] : []),
+        { role: "assistant", text: result.reply, card: result.card },
+      ]);
+      if (result.prompts.length) setPrompts(result.prompts);
+      say(result.reply);
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        { role: "assistant", text: error instanceof Error ? error.message : "I could not hear that recording." },
+      ]);
+    } finally {
+      sending.current = false;
+      setBusy(false);
+    }
+  }, [analysis, messages, say]);
+
+  const finishTurn = useCallback(() => {
+    const active = recorder.current;
+    recorder.current = null;
+    setListening(false);
+    if (!active) return;
+    const file = active.stop();
+    if (!file) {
+      setMicError("That was too short. Tap the mic and speak for a moment.");
+      return;
+    }
+    void sendTurn(file);
+  }, [sendTurn]);
+
+  const toggleMic = useCallback(async () => {
+    if (recorder.current) {
+      finishTurn();
+      return;
+    }
+    if (busy) return;
+    setMicError("");
+    stopSpeaking();
+    setSpeaking(false);
+    const next = new MicRecorder();
+    try {
+      await next.start();
+    } catch {
+      next.release();
+      setMicError("Microphone access was blocked. Allow the mic, then tap it again.");
+      return;
+    }
+    talking.current = true;
+    recorder.current = next;
+    setListening(true);
+  }, [busy, finishTurn]);
+
+  useEffect(() => {
+    if (!listening) return;
+    const timer = window.setTimeout(finishTurn, MAX_TURN_SECONDS * 1000);
+    return () => window.clearTimeout(timer);
+  }, [listening, finishTurn]);
 
   return (
     <div className={`assistant-dock ${open ? "open" : ""}`}>
@@ -99,18 +208,49 @@ export function ChatPanel({ analysis }: { analysis: Analysis | null }) {
               <p className="eyebrow">Assistant</p>
               <h2>DistressNet</h2>
             </div>
+            {canSpeak ? (
+              <button
+                type="button"
+                className={`voice-toggle ${voiceOn ? "on" : ""}`}
+                aria-pressed={voiceOn}
+                onClick={() => {
+                  if (voiceOn) {
+                    stopSpeaking();
+                    setSpeaking(false);
+                  }
+                  setVoiceOn(!voiceOn);
+                }}
+                title={voiceOn ? "Replies are read aloud when you talk by voice" : "Replies are text only"}
+              >
+                {voiceOn ? "Voice on" : "Voice off"}
+              </button>
+            ) : null}
             <button type="button" className="assistant-close" onClick={() => setOpen(false)} aria-label="Close assistant">
               Close
             </button>
           </header>
           <div className="chat-log" ref={scroller}>
             {messages.map((message, index) => (
-              <p key={index} className={`bubble ${message.role}`}>
-                {message.text}
-              </p>
+              <div key={index} className={`turn ${message.role}`}>
+                <p className={`bubble ${message.role}${message.spoken ? " spoken" : ""}`}>{message.text}</p>
+                {message.card ? (
+                  <ChatCardView card={message.card} onSend={(text) => void ask(text)} live={index === messages.length - 1} />
+                ) : null}
+              </div>
             ))}
-            {busy ? <p className="bubble assistant wait">Listening…</p> : null}
+            {busy ? (
+              <p className="bubble assistant wait" aria-label="Typing">
+                <i />
+                <i />
+                <i />
+              </p>
+            ) : null}
           </div>
+          {listening || speaking || micError ? (
+            <p className={`voice-status ${listening ? "listening" : ""}`} role="status">
+              {listening ? "Listening… tap the mic again when you're done." : speaking ? "Speaking… tap the mic to answer." : micError}
+            </p>
+          ) : null}
           <div className="chips">
             {prompts.map((prompt) => (
               <button key={prompt} type="button" onClick={() => ask(prompt)} disabled={busy}>
@@ -125,11 +265,31 @@ export function ChatPanel({ analysis }: { analysis: Analysis | null }) {
               void ask(draft);
             }}
           >
+            <button
+              type="button"
+              className={`mic ${listening ? "live" : ""}`}
+              onClick={() => void toggleMic()}
+              disabled={busy && !listening}
+              aria-pressed={listening}
+              aria-label={listening ? "Stop and send" : "Talk instead of typing"}
+              title={listening ? "Stop and send" : "Talk instead of typing"}
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {listening ? (
+                  <rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor" />
+                ) : (
+                  <>
+                    <rect x="9" y="3" width="6" height="11" rx="3" />
+                    <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+                  </>
+                )}
+              </svg>
+            </button>
             <input
               ref={field}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder={question ? "Tell me what is going on" : "Ask about this model"}
+              placeholder={support.current?.active || question ? "Tell me what is going on" : "Say how you feel, or ask about this model"}
               aria-label="Message the assistant"
             />
             <button type="submit" disabled={busy || !draft.trim()}>

@@ -13,6 +13,7 @@ trains, so a fold takes seconds once the cache exists.
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -77,9 +78,10 @@ def pooled_layers(waveform: np.ndarray, extractor, model, dev: torch.device) -> 
     """Every hidden state (including the CNN output) averaged into BINS stretches: [layers, BINS, dim]."""
     inputs = extractor(waveform, sampling_rate=TARGET_SR, return_tensors="pt")
     out = model(inputs["input_values"].to(dev), output_hidden_states=True)
-    hidden = torch.stack(out.hidden_states, dim=1)[0]  # [layers, frames, dim]
+    # Pool on the CPU: MPS cannot adaptive-pool a frame count that BINS does not divide.
+    hidden = torch.stack(out.hidden_states, dim=1)[0].float().cpu()  # [layers, frames, dim]
     binned = nn.functional.adaptive_avg_pool1d(hidden.transpose(1, 2), BINS)  # [layers, dim, BINS]
-    return binned.transpose(1, 2).float().cpu().numpy()
+    return binned.transpose(1, 2).numpy()
 
 
 def cache_path(artifacts: Path, encoder: str) -> Path:
@@ -197,6 +199,7 @@ def fit_head(
     val_t: np.ndarray,
     epochs: int = HEAD_EPOCHS,
     head: str = DEFAULT_HEAD,
+    on_epoch: Callable[[dict, LayerMixHead, Standardizer], None] | None = None,
 ) -> dict:
     """Train the head on binned features. The epoch is chosen on the validation speakers.
 
@@ -229,12 +232,14 @@ def fit_head(
     for epoch in range(1, epochs + 1):
         model.train()
         order = torch.randperm(len(yt))
+        loss_sum = 0.0
         for start in range(0, len(order), HEAD_BATCH):
             idx = order[start : start + HEAD_BATCH].numpy()
             opt.zero_grad()
             loss = loss_fn(model(scale(train_x[np.sort(idx)], dev)), yt[np.sort(idx)].to(dev))
             loss.backward()
             opt.step()
+            loss_sum += loss.item() * len(idx)
         val_logit = _logits(model, scale, val_x, dev)
         val_loss = float(loss_fn(val_logit, yv))
         pred = (_distress_prob(val_logit) >= 0.5).long().cpu().numpy()
@@ -247,6 +252,9 @@ def fit_head(
                 "epoch": epoch,
                 "state": {k: v.detach().cpu().clone() for k, v in model.state_dict().items()},
             }
+        if on_epoch is not None:
+            row = {"epoch": epoch, "train_loss": loss_sum / len(yt), "val_loss": val_loss, "val_balanced_accuracy": score}
+            on_epoch(row, model, scale)
 
     model.load_state_dict(best["state"])
     return {

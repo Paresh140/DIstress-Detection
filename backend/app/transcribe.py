@@ -11,6 +11,11 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 
+import numpy as np
+from scipy.signal import resample_poly
+
+from .audio import TARGET_SR, load_wav
+
 
 @lru_cache(maxsize=1)
 def _model():
@@ -33,6 +38,11 @@ def transcribe(path: str) -> dict | None:
     model = _model()
     if model is None:
         return None
-    segments, info = model.transcribe(path, language="en", beam_size=1, vad_filter=True)
+    # Decode here rather than in faster-whisper, whose PyAV decoder breaks on av 15 and later.
+    y, sr = load_wav(path)
+    if sr != TARGET_SR:
+        g = int(np.gcd(TARGET_SR, sr))
+        y = resample_poly(y, TARGET_SR // g, sr // g)
+    segments, info = model.transcribe(y.astype(np.float32), language="en", beam_size=1, vad_filter=True)
     text = " ".join(segment.text.strip() for segment in segments).strip()
     return {"text": text, "model": f"whisper-{os.environ.get('WHISPER_MODEL', 'base')}", "duration": round(float(info.duration), 2)}

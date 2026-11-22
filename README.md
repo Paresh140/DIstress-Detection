@@ -35,16 +35,22 @@ All commands run from `backend/`.
 
 | Command | What it does | Output |
 |---|---|---|
-| `python -m app.train` | Trains the Monitor model. Actors 01–18 train, 19–20 choose the epoch, 21–24 are the test set (same split as the Colab run). | `artifacts/audio_branch.pt`, `artifacts/training_report.json` |
+| `python -m app.train` | Trains the Monitor model. Actors 01–18 train, 19–20 choose the epoch, 21–24 are the test set (the same split as the Kaggle run). | `artifacts/audio_branch.pt`, `artifacts/training_report.json` |
 | `python -m app.cv` | Leave-speakers-out cross-validation: six folds over all 24 RAVDESS actors, or `--corpus crema-d` for five folds over the 91 CREMA-D speakers. Runs the CNN, an eGeMAPS + logistic regression baseline, and a frozen WavLM-base-plus encoder with attentive pooling and a four-class head (neutral or calm, sad, angry, fearful). Each fold is scored raw (threshold 0.5) and calibrated (temperature and threshold fitted on validation speakers), with ECE, and models are compared with paired tests over folds. `--only cnn\|egemaps\|wavlm` runs one model; `--head binary-mean` gives the first WavLM head; `--encoder facebook/wav2vec2-base` swaps the encoder. | `artifacts/cv_report.json`, `artifacts/cv_report_crema-d.json`, `artifacts/ssl_cache/` |
 | `python -m app.study` | Cross-corpus study, RAVDESS ↔ CREMA-D (needs `data/crema-d/`), for the CNN, eGeMAPS and WavLM on the same speaker splits. `--models wavlm egemaps` picks models; `--encoder` and `--head` work as in `app.cv`; `--norm corpus\|speaker` standardizes features per corpus or speaker with unlabeled audio. Every run is also calibrated, with a speaker-bootstrap 95% interval. | `artifacts/cross_corpus_report.json` |
-| `python -m app.voice` | Trains the live WavLM voice model: RAVDESS actors 01–18 plus CREMA-D (when present) train, actors 19–20 and nine CREMA-D speakers choose the epoch, temperature and threshold, actors 21–24 are scored once. Copy the file into `artifacts/` on the studio machine and Monitor uses it. | `artifacts/voice_head.pt` |
+| `python -m app.voice` | Trains the live WavLM voice model: RAVDESS actors 01–18 plus CREMA-D (when present) train, actors 19–20 and nine CREMA-D speakers choose the epoch, temperature and threshold, actors 21–24 are scored once. Every epoch and every test clip go into `voice_report.json`; `--progress file.jsonl` also logs each epoch as it finishes. Monitor uses the head as soon as it is in `artifacts/`. | `artifacts/voice_head.pt`, `artifacts/voice_report.json` |
 | `python -m app.safety_eval` | Runs the crisis screen and the agent on the 100-message safety set (`eval/safety_set.jsonl`) and checks the targets: every explicit message gets 988, at least 90% of indirect messages are flagged, at most 10% of harmless ones are flagged high. Exits 1 on a miss. `--no-model` tests the keyword floor alone. | `artifacts/safety_report.json` |
 | `python -m app.reader_eval` | Compares the phrase list, the language-model reader and a GoEmotions RoBERTa on 200 labeled sentences (`eval/reader_sentences.jsonl`), overall and per group. | `artifacts/reader_report.json` |
 | `python -m pytest tests` | Unit tests for the judge bands and floor, the crisis screen, the support flow and calibration. No model calls. | |
 | `python -m app.compare` | Reads the three reports above and writes one comparison table plus a check against the proposal targets. | `artifacts/comparison.md` |
 
 Labels everywhere: distress = sad, angry, fearful; non-distress = neutral, calm; happy, disgust and surprise are excluded.
+
+### Training on Kaggle
+
+The saved models and reports in `backend/artifacts/` came from one Kaggle GPU run of `kaggle/DistressNet_Kaggle.ipynb` (about 70 minutes on a T4). It clones `main` of this repo, attaches the Kaggle datasets `uwrfkaggler/ravdess-emotional-speech-audio` and `ejlok1/cremad` (nothing to download), runs `app.cv`, `app.study`, `app.voice`, `app.train`, `app.reader_eval` and `app.compare` in that order, prints the new numbers next to the saved ones, and packs `distressnet_results.zip`. `kaggle/distress-net-wavelm.ipynb` and `kaggle/distressnet-run-1.ipynb` are the earlier runs, kept for reference.
+
+From the studio: **Train on GPU** on the Training page opens that notebook in Kaggle. Turn on a GPU and Internet under Session options, then **Save Version → Save & Run All**. When the version finishes, download `distressnet_results.zip` from its Output tab and choose **Load Kaggle results** on the Training page; the new head goes live on Monitor and the reports update. The button opens https://www.kaggle.com/code/sarthakpokhrel/notebook5cd1df997e; `DISTRESSNET_KAGGLE_URL` points it at another notebook.
 
 The WavLM model downloads its weights from Hugging Face the first time it runs (about 380 MB; on Kaggle, turn Internet on). Every clip is embedded once and cached, so later runs only train the head.
 

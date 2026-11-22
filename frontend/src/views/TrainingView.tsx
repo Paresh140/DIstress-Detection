@@ -1,5 +1,16 @@
 import { useEffect, useState } from "react";
-import { clipUrl, getGpuLive, getStudy, getTrainLive, getTraining, startGpuTraining, startTraining, type StudyReport, type TrainLive } from "../api";
+import {
+  clipUrl,
+  getKaggleUrl,
+  getStudy,
+  getTrainLive,
+  getTraining,
+  getVoiceReport,
+  loadKaggleResults,
+  startTraining,
+  type StudyReport,
+  type VoiceReport,
+} from "../api";
 import type { TrainEpoch } from "../types";
 import { LineChart } from "../components/Charts";
 import { NeuronStage, layerScale } from "../components/NeuronStage";
@@ -20,56 +31,20 @@ export function TrainingView() {
   const [epoch, setEpoch] = useState(1);
   const [layer, setLayer] = useState("conv2");
   const [following, setFollowing] = useState(false);
-  const [remote, setRemote] = useState(false);
   const [starting, setStarting] = useState(false);
   const [serverDone, setServerDone] = useState(false);
   const [liveHistory, setLiveHistory] = useState<TrainEpoch[] | null>(null);
   const [liveBest, setLiveBest] = useState<TrainingReport["best"] | null>(null);
   const [liveNote, setLiveNote] = useState("");
   const [plannedEpochs, setPlannedEpochs] = useState(16);
-  const [overlay, setOverlay] = useState<TrainingReport | null>(null);
-  const [loggedOnly, setLoggedOnly] = useState(false);
-
-  function playLoggedRun(live: TrainLive) {
-    if (!live.display) return;
-    setOverlay(live.display);
-    setLoggedOnly(true);
-    setRemote(true);
-    setLiveHistory(live.history);
-    setLiveBest(live.best);
-    setPlannedEpochs(live.epochs);
-    setServerDone(true);
-    setEpoch(1);
-    setFollowing(true);
-  }
+  const [resultsVersion, setResultsVersion] = useState(0);
 
   useEffect(() => {
     let active = true;
-    Promise.all([getTraining(), getGpuLive()])
-      .then(([next, live]) => {
+    getTraining()
+      .then((next) => {
         if (!active) return;
         setReport(next);
-        const playSavedGpu = next.epochs_ran >= 24 && sessionStorage.getItem("distressnet-gpu-played") !== "1";
-        if (playSavedGpu) {
-          sessionStorage.setItem("distressnet-gpu-played", "1");
-          setRemote(true);
-          setLoggedOnly(false);
-          setLiveHistory(next.history);
-          setLiveBest(next.best);
-          setPlannedEpochs(next.epochs_ran);
-          setServerDone(true);
-          setEpoch(1);
-          setFollowing(true);
-          return;
-        }
-        if (next.epochs_ran >= 24) {
-          setEpoch(next.best.epoch);
-          return;
-        }
-        if (live.logged_only && live.display && live.history.length) {
-          playLoggedRun(live);
-          return;
-        }
         setEpoch(next.best.epoch);
       })
       .catch((err: Error) => {
@@ -81,41 +56,15 @@ export function TrainingView() {
   }, []);
 
   useEffect(() => {
-    if (!loggedOnly) return;
-    const timer = window.setInterval(() => {
-      getTraining()
-        .then((next) => {
-          if (next.epochs_ran < 24) return;
-          setReport(next);
-          setOverlay(null);
-          setLoggedOnly(false);
-          setLiveHistory(null);
-          setLiveBest(null);
-          setFollowing(false);
-          setServerDone(false);
-          setEpoch(next.best.epoch);
-          setLiveNote("Drive copied the checkpoint. Actors 21–24 scored it.");
-        })
-        .catch(() => undefined);
-    }, 4000);
-    return () => window.clearInterval(timer);
-  }, [loggedOnly]);
-
-  useEffect(() => {
     if (!following || serverDone) return;
     const timer = window.setInterval(() => {
-      const pull = remote ? getGpuLive() : getTrainLive();
-      pull
+      getTrainLive()
         .then((live) => {
           setPlannedEpochs(live.epochs);
           if (live.history.length) {
             setLiveHistory(live.history);
             if (live.best) setLiveBest(live.best);
             setEpoch((current) => (current < 1 ? 1 : current));
-          } else if (live.phase === "downloading") {
-            setLiveNote("The GPU is downloading all 24 actors into Drive.");
-          } else if (remote) {
-            setLiveNote("Colab is in the other tab. This page stays here and draws each epoch.");
           } else {
             setLiveNote("Loading the clips. The first epoch has not finished yet.");
           }
@@ -127,9 +76,9 @@ export function TrainingView() {
           }
         })
         .catch((err: Error) => setError(err.message));
-    }, remote ? 2000 : 700);
+    }, 700);
     return () => window.clearInterval(timer);
-  }, [following, serverDone, remote]);
+  }, [following, serverDone]);
 
   useEffect(() => {
     if (!following || !liveHistory?.length || epoch < 1) return;
@@ -139,16 +88,6 @@ export function TrainingView() {
     }
     if (serverDone && epoch >= liveHistory.length) {
       const timer = window.setTimeout(() => {
-        if (loggedOnly) {
-          setFollowing(false);
-          setServerDone(false);
-          setLiveHistory(null);
-          setEpoch(liveBest?.epoch ?? epoch);
-          setLiveNote(
-            "Actors 21–24 scored this run. The checkpoint is on Drive and has not reached this Mac yet, so the voice network here is still the earlier one.",
-          );
-          return;
-        }
         getTraining()
           .then((next) => {
             setReport(next);
@@ -164,39 +103,10 @@ export function TrainingView() {
       return () => window.clearTimeout(timer);
     }
     return undefined;
-  }, [following, liveHistory, epoch, serverDone, loggedOnly, liveBest]);
-
-  async function trainOnGpu() {
-    setError("");
-    setOverlay(null);
-    setLoggedOnly(false);
-    setRemote(true);
-    setStarting(true);
-    setEpoch(0);
-    setLiveHistory(null);
-    setLiveBest(null);
-    setServerDone(false);
-    setLiveNote("Colab is in the other tab. This page stays here and draws each epoch.");
-    try {
-      const started = await startGpuTraining();
-      setPlannedEpochs(started.epochs);
-      window.open(started.url, "_blank", "noopener");
-      setStarting(false);
-      setFollowing(true);
-    } catch (err) {
-      setStarting(false);
-      setFollowing(false);
-      setRemote(false);
-      setLiveNote("");
-      setError(err instanceof Error ? err.message : "The GPU run could not start.");
-    }
-  }
+  }, [following, liveHistory, epoch, serverDone]);
 
   async function trainAgain() {
     setError("");
-    setOverlay(null);
-    setLoggedOnly(false);
-    setRemote(false);
     setStarting(true);
     setEpoch(0);
     setLiveHistory(null);
@@ -217,10 +127,15 @@ export function TrainingView() {
   }
 
   if (!report) {
-    return <p className={error ? "status error" : "status"}>{error || "Loading the training run…"}</p>;
+    return (
+      <section className="training-page">
+        <VoiceSection onLoaded={() => setResultsVersion((n) => n + 1)} />
+        <p className={error ? "status error" : "status"}>{error || "Loading the training run…"}</p>
+      </section>
+    );
   }
 
-  const view = overlay ?? report;
+  const view = report;
   const history = liveHistory && epoch > 0 ? liveHistory.slice(0, epoch) : view.history;
   const best = liveBest ?? view.best;
   const detailed = history.some((row) => typeof row.test_loss === "number");
@@ -233,34 +148,24 @@ export function TrainingView() {
 
   return (
     <section className="training-page">
+      <VoiceSection onLoaded={() => setResultsVersion((n) => n + 1)} />
+
       <header className="page-head">
-        <p className="eyebrow">Training</p>
+        <p className="eyebrow">First prototype: the CNN</p>
         <h1>
           Actors {actorSpan(view.split.train_actors)} taught it. Actors {actorSpan(view.split.test_actors)} scored
           it.
         </h1>
         <p className="lede">{view.narrative}</p>
         <div className="train-bar">
-          <button
-            type="button"
-            className="detect-btn"
-            onClick={() => void trainOnGpu()}
-            disabled={starting || showingLive}
-          >
-            {showingLive && remote ? (view.logged_only ? "Playing the GPU run" : "Training on GPU") : "Train on GPU"}
-          </button>
           <button type="button" className="file-btn" onClick={() => void trainAgain()} disabled={starting || following}>
-            {following && !remote ? "Training" : "Train on this Mac"}
+            {following ? "Training" : "Train on this Mac"}
           </button>
           <p className="fine">
             {showingLive
-              ? `Epoch ${epoch} of ${plannedEpochs}. ${
-                  view.logged_only
-                    ? "These are the epochs Colab printed. Drive has not copied the checkpoint to this Mac yet."
-                    : "Each epoch stays on the network so the forward and backward pass can be seen."
-                }`
+              ? `Epoch ${epoch} of ${plannedEpochs}. Each epoch stays on the network so the forward and backward pass can be seen.`
               : liveNote ||
-                "Train on GPU opens the Colab run for all 24 actors. This page draws each epoch when Drive syncs it. Train on this Mac uses the clips already here."}
+                "The log-mel CNN came before the WavLM model above. Train on this Mac retrains it on the clips already here."}
           </p>
         </div>
         {error ? <p className="status error">{error}</p> : null}
@@ -275,12 +180,6 @@ export function TrainingView() {
         bestEpoch={best.epoch}
       />
       <p className="fine train-note">
-        {view.logged_only ? (
-          <>
-            Brightness follows this epoch’s test F1. Pale dots move forward and clay dots move backward.
-            Layer activations and gradients are in the checkpoint file, which has not reached this Mac yet.
-          </>
-        ) : (
           <>
             Click a column, or a row in the epoch table. Brightness is activation
             {layerScale(history, stageEpoch, layer, "activation") !== null
@@ -289,7 +188,6 @@ export function TrainingView() {
             . Warmer edges are larger gradients on that epoch.
             {showingLive ? " Pale dots move forward and clay dots move backward on this epoch." : ""}
           </>
-        )}
       </p>
 
       <div className="stat-grid">
@@ -361,7 +259,7 @@ export function TrainingView() {
             </>
           ) : (
             <p className="fine">
-              The confusion counts are in the saved report. Drive has not copied that file to this Mac yet.
+              This report has no confusion counts.
             </p>
           )}
         </article>
@@ -500,25 +398,236 @@ export function TrainingView() {
           ))}
         </ul>
         ) : (
-          <p className="fine">Held-out clip scores are in the saved report. Drive has not copied that file to this Mac yet.</p>
+          <p className="fine">This report has no held-out clip scores.</p>
         )}
       </article>
 
-      <StudySection />
+      <StudySection key={resultsVersion} />
 
       <p className="citation">{view.citation}</p>
     </section>
   );
 }
 
+function VoiceSection({ onLoaded }: { onLoaded: () => void }) {
+  const [voice, setVoice] = useState<VoiceReport | null>(null);
+  const [note, setNote] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  function loadVoice() {
+    getVoiceReport()
+      .then(setVoice)
+      .catch((err: Error) => setVoice({ ready: false, error: err.message }));
+  }
+
+  useEffect(loadVoice, []);
+
+  async function trainOnGpu() {
+    setError("");
+    // Open the tab inside the click so the browser does not block it, then point it at Kaggle.
+    const tab = window.open("", "_blank");
+    try {
+      const { url } = await getKaggleUrl();
+      if (tab) tab.location.href = url;
+      else window.open(url, "_blank", "noopener");
+      setNote(
+        "Kaggle is in the other tab. Turn on a GPU and Internet, then Save Version → Save & Run All. When it finishes, download distressnet_results.zip from Output and load it here.",
+      );
+    } catch (err) {
+      tab?.close();
+      setError(err instanceof Error ? err.message : "Kaggle could not be opened.");
+    }
+  }
+
+  async function loadResults(files: FileList | null) {
+    if (!files?.length) return;
+    setError("");
+    setLoading(true);
+    try {
+      const done = await loadKaggleResults(Array.from(files));
+      const model = done.voice_model === "wavlm" ? "Monitor now uses the new WavLM model." : done.voice_error;
+      setNote(`Loaded ${done.installed.join(", ")}. ${model}`);
+      loadVoice();
+      onLoaded();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The Kaggle results could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const summary = voice?.summary;
+  const history = voice?.history ?? [];
+  const misses = (voice?.predictions ?? []).filter((item) => !item.correct);
+  const layers = summary?.layer_weights ?? [];
+  const topLayers = layers
+    .map((weight, index) => ({ index, weight }))
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, 3);
+
+  return (
+    <>
+      <header className="page-head">
+        <p className="eyebrow">Training: the live voice model</p>
+        <h1>WavLM listens. A small head decides distress.</h1>
+        <p className="lede">
+          {summary
+            ? `A frozen ${summary.encoder} encoder turns each clip into 13 layers of features; the ${summary.head} head mixes the layers and scores distress. It trained on ${summary.train_clips} clips from ${summary.corpora.join(" and ")}, chose epoch ${summary.selected_epoch} on ${summary.val_clips} validation clips, and ${summary.test} (${summary.test_clips} clips) scored it once.`
+            : voice?.error || "Loading the voice model…"}
+        </p>
+        <div className="train-bar">
+          <button type="button" className="detect-btn" onClick={() => void trainOnGpu()}>
+            Train on GPU
+          </button>
+          <label className="file-btn">
+            {loading ? "Loading results" : "Load Kaggle results"}
+            <input
+              type="file"
+              accept=".zip,.pt,.json,.md"
+              multiple
+              disabled={loading}
+              onChange={(event) => {
+                void loadResults(event.target.files);
+                event.target.value = "";
+              }}
+            />
+          </label>
+          <p className="fine">
+            {note ||
+              "Train on GPU opens the Kaggle notebook with the RAVDESS and CREMA-D datasets attached. It trains this model and reruns every evaluation; load its distressnet_results.zip here and Monitor uses the new model."}
+          </p>
+        </div>
+        {error ? <p className="status error">{error}</p> : null}
+      </header>
+
+      {summary ? (
+        <div className="stat-grid">
+          <Stat
+            label="Balanced accuracy"
+            value={summary.test_balanced_accuracy.toFixed(2)}
+            note={`calibrated, threshold ${summary.threshold.toFixed(2)}`}
+          />
+          <Stat label="AUROC" value={summary.test_auroc?.toFixed(2) ?? "-"} note="held-out actors 21–24" />
+          <Stat
+            label="Specificity"
+            value={summary.test_specificity?.toFixed(2) ?? "-"}
+            note="calm clips left calm"
+          />
+          <Stat label="Calibration error" value={summary.test_ece?.toFixed(3) ?? "-"} note={`temperature ${summary.temperature.toFixed(2)}`} />
+        </div>
+      ) : null}
+
+      {history.length ? (
+        <div className="chart-grid">
+          <figure>
+            <figcaption>Loss</figcaption>
+            <LineChart
+              series={[
+                { name: "Train", color: "#1b1914", values: history.map((row) => row.train_loss) },
+                { name: "Validation", color: "#a33b2b", values: history.map((row) => row.val_loss) },
+              ]}
+            />
+            <p className="legend">
+              <i className="swatch ink" /> Train <i className="swatch clay" /> Validation
+            </p>
+          </figure>
+          <figure>
+            <figcaption>Scores at threshold 0.5</figcaption>
+            <LineChart
+              series={[
+                { name: "Val balanced accuracy", color: "#a9782e", values: history.map((row) => row.val_balanced_accuracy) },
+                { name: "Test F1", color: "#1f4d3a", values: history.map((row) => row.test_f1) },
+              ]}
+            />
+            <p className="legend">
+              <i className="swatch gold" /> Val balanced accuracy (chooses the epoch) <i className="swatch pine" /> Test F1
+              (only drawn)
+            </p>
+          </figure>
+        </div>
+      ) : summary ? (
+        <p className="fine">
+          This model was trained before epochs were logged. Train on GPU again to draw every epoch and every test clip.
+        </p>
+      ) : null}
+
+      {summary && (topLayers.length || misses.length) ? (
+        <div className="split-layout">
+          {topLayers.length ? (
+            <article className="panel">
+              <h2>Which WavLM layers it listens to</h2>
+              <p className="fine">
+                The head learns one weight per layer (0 is the CNN feature encoder, 12 the last transformer layer).
+              </p>
+              <ul>
+                {topLayers.map((item) => (
+                  <li key={item.index}>
+                    Layer {item.index}: {(item.weight * 100).toFixed(1)}%
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ) : null}
+          {voice?.predictions?.length ? (
+            <article className="panel">
+              <h2>Held-out clips it got wrong</h2>
+              <p className="fine">
+                {misses.length} of {voice.predictions.length} test clips, at threshold {summary.threshold.toFixed(2)}.
+              </p>
+              <div className="epoch-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Clip</th>
+                      <th>Emotion</th>
+                      <th>Truth</th>
+                      <th>P(distress)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {misses.slice(0, 10).map((item) => (
+                      <tr key={item.file}>
+                        <td>{item.file}</td>
+                        <td>{item.emotion}</td>
+                        <td>{item.truth}</td>
+                        <td>{item.probability.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          ) : null}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+// The live voice model's head; the table opens on it when the report has it.
+const LIVE_STUDY_MODEL = "wavlm/binary-mean";
+
+function studyModelLabel(key: string): string {
+  const [model, norm] = key.split("+");
+  const name = model === "cnn" ? "CNN" : model === "egemaps" ? "eGeMAPS" : model.replace("wavlm", "WavLM").replace("/", " ");
+  return norm ? `${name}, ${norm} normalization` : name;
+}
+
 function StudySection() {
   const [study, setStudy] = useState<StudyReport | null>(null);
+  const [model, setModel] = useState("");
 
   useEffect(() => {
     getStudy()
       .then(setStudy)
       .catch(() => setStudy({ ready: false, summary: "The cross-corpus study could not be loaded." }));
   }, []);
+
+  const models = study?.models ?? (study?.runs ? { cnn: study.runs } : {});
+  const keys = Object.keys(models);
+  const chosen = keys.includes(model) ? model : keys.includes(LIVE_STUDY_MODEL) ? LIVE_STUDY_MODEL : keys[0];
+  const rows = chosen ? models[chosen] : [];
 
   return (
     <article className="panel">
@@ -529,35 +638,66 @@ function StudySection() {
         branch: both corpora repeat fixed sentences in every emotion.
       </p>
       {!study?.ready ? <p className="fine">{study?.summary ?? "Loading the study…"}</p> : null}
-      {study?.ready && study.runs ? (
+      {study?.ready && rows.length ? (
         <>
           <p className="fine">{study.selection}</p>
+          <label className="fine">
+            Model{" "}
+            <select value={chosen} onChange={(event) => setModel(event.target.value)}>
+              {keys.map((key) => (
+                <option key={key} value={key}>
+                  {studyModelLabel(key)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {study.updated ? (
+            <p className="fine">
+              Report written{" "}
+              {new Date(study.updated * 1000).toLocaleString()}.
+            </p>
+          ) : null}
           <div className="epoch-table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>Run</th>
                   <th>Balanced accuracy</th>
+                  <th>Specificity</th>
+                  <th>AUROC</th>
                   <th>Distress F1</th>
                   <th>Always-majority F1</th>
                   <th>Clips</th>
                 </tr>
               </thead>
               <tbody>
-                {study.runs.map((run) => (
-                  <tr key={run.name}>
-                    <td>{run.name}</td>
-                    <td>{run.test_balanced_accuracy.toFixed(2)}</td>
-                    <td>{run.test_f1.toFixed(2)}</td>
-                    <td>{run.majority_f1.toFixed(2)}</td>
-                    <td>
-                      {run.train_clips} train / {run.test_clips} test
-                    </td>
-                  </tr>
-                ))}
+                {rows.map((run) => {
+                  const ci = run.calibrated?.balanced_accuracy_ci95;
+                  return (
+                    <tr key={run.name}>
+                      <td>{run.name}</td>
+                      <td>
+                        {(run.calibrated?.balanced_accuracy ?? run.test_balanced_accuracy).toFixed(2)}
+                        {ci ? ` [${ci[0].toFixed(2)}, ${ci[1].toFixed(2)}]` : ""}
+                      </td>
+                      <td>{(run.calibrated?.specificity ?? run.test_specificity)?.toFixed(2) ?? "-"}</td>
+                      <td>{run.test_auroc?.toFixed(2) ?? "-"}</td>
+                      <td>{(run.calibrated?.f1 ?? run.test_f1).toFixed(2)}</td>
+                      <td>{run.majority_f1.toFixed(2)}</td>
+                      <td>
+                        {run.train_clips} train / {run.test_clips} test
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+          <p className="fine">
+            Balanced accuracy, specificity and F1 are calibrated on validation speakers when the run has it; brackets are
+            the speaker-bootstrap 95% interval. Normalized runs standardize features with unlabeled audio from the test
+            corpus or speaker.
+          </p>
           <p className="fine">{study.text?.finding}</p>
           <p className="fine">{study.iemocap}</p>
           {study.disagreement?.ready && study.disagreement.cells ? (

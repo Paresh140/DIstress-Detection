@@ -9,8 +9,10 @@ on RAVDESS actors 01–18, plus CREMA-D
 when data/crema-d/ exists (all but nine speakers). RAVDESS actors 19–20 and
 those nine CREMA-D speakers choose the epoch, the temperature and the
 threshold. RAVDESS actors 21–24 are scored once and the result is saved with
-the head in artifacts/voice_head.pt. Copy that file next to the studio and it
+the head in artifacts/voice_head.pt, with voice_report.json beside it (every
+epoch and every test clip). Copy those next to the studio and the head
 replaces the CNN on Monitor; without it the CNN is used, as before.
+--progress appends one JSON line per epoch as it finishes.
 
 At run time the encoder weights come from Hugging Face (about 380 MB, cached
 after the first load).
@@ -38,6 +40,7 @@ from .speech_encoder import (
     Standardizer,
     cache_path,
     embed_clips,
+    _distress_prob,
     fit_head,
     load_16k,
     load_encoder,
@@ -45,11 +48,12 @@ from .speech_encoder import (
     predict_logits,
     targets,
 )
-from .train import SEED, device
+from .train import SEED, _binary_metrics, device
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = ROOT / "backend" / "artifacts"
 HEAD_FILE = "voice_head.pt"
+REPORT_FILE = "voice_report.json"
 CREMA_VAL_SPEAKERS = 9
 LIVE_HEAD = "binary-mean"
 
@@ -58,7 +62,19 @@ def _ids(actors: set[int]) -> set[str]:
     return {f"{actor:02d}" for actor in actors}
 
 
-def train(encoder: str = DEFAULT_ENCODER, head: str = LIVE_HEAD, out: Path = ARTIFACTS / HEAD_FILE) -> dict:
+def _emit(progress: Path | None, payload: dict) -> None:
+    if progress is None:
+        return
+    with progress.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload) + "\n")
+
+
+def train(
+    encoder: str = DEFAULT_ENCODER,
+    head: str = LIVE_HEAD,
+    out: Path = ARTIFACTS / HEAD_FILE,
+    progress: Path | None = None,
+) -> dict:
     random.seed(SEED)
     np.random.seed(SEED)
     ravdess = discover(ROOT / "data" / "ravdess", "RAVDESS")
@@ -79,10 +95,29 @@ def train(encoder: str = DEFAULT_ENCODER, head: str = LIVE_HEAD, out: Path = ART
     def stack(group: list) -> np.ndarray:
         return np.stack([features[str(c.path)] for c in group])
 
-    fitted = fit_head(stack(train_clips), targets(train_clips, head), stack(val_clips), targets(val_clips, head), head=head)
+    test_x = stack(test_clips)
+    test_y = np.array([c.label for c in test_clips])
+    history: list[dict] = []
+
+    def log_epoch(row: dict, model: LayerMixHead, scale: Standardizer) -> None:
+        # Test speakers are only drawn here; the epoch is still chosen on validation speakers.
+        prob = _distress_prob(torch.from_numpy(predict_logits({"head": model, "scale": scale}, test_x))).numpy()
+        metrics = _binary_metrics(test_y, (prob >= 0.5).astype(np.int64))
+        row = {
+            **{k: round(float(v), 4) for k, v in row.items() if k != "epoch"},
+            "epoch": row["epoch"],
+            "test_f1": round(metrics["f1"], 4),
+            "test_balanced_accuracy": round(metrics["balanced_accuracy"], 4),
+        }
+        history.append(row)
+        _emit(progress, {"type": "epoch", **row})
+
+    fitted = fit_head(
+        stack(train_clips), targets(train_clips, head), stack(val_clips), targets(val_clips, head), head=head, on_epoch=log_epoch
+    )
     val_logits = predict_logits(fitted, stack(val_clips))
-    test_logits = predict_logits(fitted, stack(test_clips))
-    scored = calibration.evaluate(val_logits, targets(val_clips, head), test_logits, np.array([c.label for c in test_clips]))
+    test_logits = predict_logits(fitted, test_x)
+    scored = calibration.evaluate(val_logits, targets(val_clips, head), test_logits, test_y)
     cal = scored["calibrated"]
     summary = {
         "encoder": encoder,
@@ -114,6 +149,20 @@ def train(encoder: str = DEFAULT_ENCODER, head: str = LIVE_HEAD, out: Path = ART
         },
         out,
     )
+    predictions = [
+        {
+            "file": clip.path.name,
+            "speaker": clip.speaker,
+            "emotion": clip.emotion,
+            "truth": "distress" if clip.label else "calm",
+            "probability": round(float(p), 4),
+            "correct": bool((p >= scored["threshold"]) == bool(clip.label)),
+        }
+        for clip, p in zip(test_clips, scored["test_probability"])
+    ]
+    report = {"summary": summary, "epochs": len(history), "history": history, "predictions": predictions}
+    (out.parent / REPORT_FILE).write_text(json.dumps(report, indent=2))
+    _emit(progress, {"type": "done", "summary": summary})
     print(json.dumps(summary, indent=2))
     return summary
 
@@ -161,5 +210,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--encoder", default=DEFAULT_ENCODER)
     parser.add_argument("--head", choices=sorted(HEADS), default=LIVE_HEAD)
+    parser.add_argument("--out", type=Path, default=ARTIFACTS / HEAD_FILE, help="where voice_head.pt goes; voice_report.json is written beside it")
+    parser.add_argument("--progress", type=Path, help="append one JSON line per epoch to this file")
     args = parser.parse_args()
-    train(args.encoder, args.head)
+    train(args.encoder, args.head, args.out, args.progress)
