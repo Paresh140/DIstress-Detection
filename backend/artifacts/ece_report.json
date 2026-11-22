@@ -1,0 +1,107 @@
+{
+  "live head, RAVDESS 21-24": {
+    "clips": 144,
+    "ece_equal_width": {
+      "5": 0.1051,
+      "10": 0.1051,
+      "15": 0.1121
+    },
+    "ece_equal_mass": {
+      "5": 0.109,
+      "10": 0.106,
+      "15": 0.1067
+    },
+    "reliability_10_bins": [
+      {
+        "bin": [
+          0.0,
+          0.1
+        ],
+        "clips": 53,
+        "mean_probability": 0.0304,
+        "distress_rate": 0.1509
+      },
+      {
+        "bin": [
+          0.1,
+          0.2
+        ],
+        "clips": 5,
+        "mean_probability": 0.1502,
+        "distress_rate": 0.4
+      },
+      {
+        "bin": [
+          0.2,
+          0.3
+        ],
+        "clips": 3,
+        "mean_probability": 0.2504,
+        "distress_rate": 1.0
+      },
+      {
+        "bin": [
+          0.3,
+          0.4
+        ],
+        "clips": 2,
+        "mean_probability": 0.3784,
+        "distress_rate": 1.0
+      },
+      {
+        "bin": [
+          0.4,
+          0.5
+        ],
+        "clips": 1,
+        "mean_probability": 0.4812,
+        "distress_rate": 1.0
+      },
+      {
+        "bin": [
+          0.5,
+          0.6
+        ],
+        "clips": 2,
+        "mean_probability": 0.5335,
+        "distress_rate": 1.0
+      },
+      {
+        "bin": [
+          0.6,
+          0.7
+        ],
+        "clips": 1,
+        "mean_probability": 0.6002,
+        "distress_rate": 1.0
+      },
+      {
+        "bin": [
+          0.7,
+          0.8
+        ],
+        "clips": 4,
+        "mean_probability": 0.7541,
+        "distress_rate": 1.0
+      },
+      {
+        "bin": [
+          0.8,
+          0.9
+        ],
+        "clips": 2,
+        "mean_probability": 0.887,
+        "distress_rate": 1.0
+      },
+      {
+        "bin": [
+          0.9,
+          1.0
+        ],
+        "clips": 71,
+        "mean_probability": 0.9867,
+        "distress_rate": 1.0
+      }
+    ]
+  }
+}

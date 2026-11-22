@@ -34,3 +34,21 @@ def test_judge_pair_keeps_the_higher_band():
     assert loud_voice["band"] == "support" and loud_voice["non_canceling_held"]
     words = pipeline_eval.judge_pair(0.01, 0.5, "I'm scared and I can't breathe", reader, calm_risk)
     assert words["band"] == "support" and words["voice_band"] == "calm"
+
+
+def test_wer_normalizes_numbers_and_apostrophes():
+    from app.asr_eval import normalize, wer
+
+    assert normalize("It's 11 o'clock.") == ["its", "eleven", "oclock"]
+    out = wer([("It's eleven o'clock", "Its 11 oclock"), ("Kids are talking by the door", "kids talking by the door")])
+    assert out["errors"] == 1 and out["reference_words"] == 9 and out["exact_match"] == 0.5
+
+
+def test_ece_equal_mass_is_zero_for_perfect_calibration():
+    import numpy as np
+
+    from app.ece_eval import ece_equal_mass
+
+    prob = np.repeat([0.2, 0.8], 50)
+    truth = np.concatenate([np.r_[np.ones(10), np.zeros(40)], np.r_[np.ones(40), np.zeros(10)]])
+    assert ece_equal_mass(prob, truth, 2) < 1e-9
