@@ -3,6 +3,7 @@ import { sendChat, sendVoiceChat } from "../api";
 import type { Analysis, ChatMessage } from "../types";
 import { MicRecorder, canSpeak, speak, stopSpeaking } from "../voice";
 import { ChatCardView } from "./ChatCards";
+import { Readings } from "./Readings";
 
 const MAX_TURN_SECONDS = 30;
 
@@ -141,7 +142,7 @@ export function ChatPanel({ analysis }: { analysis: Analysis | null }) {
       support.current = result.state;
       setMessages((current) => [
         ...current,
-        ...(result.heard ? [{ role: "user" as const, text: result.heard, spoken: true }] : []),
+        ...(result.heard ? [{ role: "user" as const, text: result.heard, spoken: true, reading: result.reading }] : []),
         { role: "assistant", text: result.reply, card: result.card },
       ]);
       if (result.prompts.length) setPrompts(result.prompts);
@@ -233,6 +234,7 @@ export function ChatPanel({ analysis }: { analysis: Analysis | null }) {
             {messages.map((message, index) => (
               <div key={index} className={`turn ${message.role}`}>
                 <p className={`bubble ${message.role}${message.spoken ? " spoken" : ""}`}>{message.text}</p>
+                {message.reading?.judge ? <Readings reading={message.reading} compact /> : null}
                 {message.card ? (
                   <ChatCardView card={message.card} onSend={(text) => void ask(text)} live={index === messages.length - 1} />
                 ) : null}

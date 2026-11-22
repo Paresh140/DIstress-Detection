@@ -1,5 +1,30 @@
 import type { Analysis, ChatCard, NetworkSpec, Sample, TrainEpoch, TrainingReport } from "./types";
 
+// One id per browser, so the server can keep this person's calm enrollment between requests.
+function makeSession(): string {
+  const random = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, "0")).join("");
+  return `s-${random}`;
+}
+
+let memorySession = "";
+
+export function sessionId(): string {
+  try {
+    const saved = window.localStorage.getItem("distressnet-session");
+    if (saved) return saved;
+    const fresh = makeSession();
+    window.localStorage.setItem("distressnet-session", fresh);
+    return fresh;
+  } catch {
+    if (!memorySession) memorySession = makeSession();
+    return memorySession;
+  }
+}
+
+function sessionHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  return { "X-Session": sessionId(), ...extra };
+}
+
 async function readError(response: Response): Promise<string> {
   try {
     const body = await response.json();
@@ -182,7 +207,7 @@ export async function getSamples(): Promise<Sample[]> {
 export async function analyzeClip(file: string): Promise<Analysis> {
   const response = await fetch("/api/analyze/clip", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: sessionHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ file }),
   });
   if (!response.ok) throw new Error(await readError(response));
@@ -193,7 +218,7 @@ export async function analyzeUpload(file: File, transcript = ""): Promise<Analys
   const body = new FormData();
   body.append("file", file);
   if (transcript.trim()) body.append("transcript", transcript.trim());
-  const response = await fetch("/api/analyze/upload", { method: "POST", body });
+  const response = await fetch("/api/analyze/upload", { method: "POST", body, headers: sessionHeaders() });
   if (!response.ok) throw new Error(await readError(response));
   return response.json();
 }
@@ -243,7 +268,7 @@ export async function sendVoiceChat(
       state,
     }),
   );
-  const response = await fetch("/api/chat/voice", { method: "POST", body });
+  const response = await fetch("/api/chat/voice", { method: "POST", body, headers: sessionHeaders() });
   if (!response.ok) throw new Error(await readError(response));
   return response.json();
 }
@@ -272,4 +297,34 @@ export async function sendChat(
 export function clipUrl(file: string): string {
   const [actor, name] = file.split("/");
   return `/api/clips/${actor}/${name}`;
+}
+
+export type Enrollment = {
+  available: boolean;
+  clips: number;
+  needed: number;
+  recommended: number;
+  active: boolean;
+  script: string[];
+  note: string;
+};
+
+export async function getEnrollment(): Promise<Enrollment> {
+  const response = await fetch("/api/enroll", { headers: sessionHeaders() });
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json();
+}
+
+export async function addEnrollment(file: File): Promise<Enrollment> {
+  const body = new FormData();
+  body.append("file", file);
+  const response = await fetch("/api/enroll", { method: "POST", body, headers: sessionHeaders() });
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json();
+}
+
+export async function resetEnrollment(): Promise<Enrollment> {
+  const response = await fetch("/api/enroll", { method: "DELETE", headers: sessionHeaders() });
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json();
 }

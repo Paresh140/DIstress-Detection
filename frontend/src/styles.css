@@ -559,3 +559,47 @@ tbody tr { cursor: pointer; }
 .voice-status { margin: 0; padding: 4px 14px 0; font-size: 0.8rem; color: var(--muted); }
 .voice-status.listening { color: var(--clay); }
 .bubble.user.spoken::before { content: "🎙 "; opacity: 0.7; }
+
+/* Calibration (first step on Monitor) */
+.calibration {
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 22px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-left: 4px solid var(--gold);
+}
+.calibration.compact { padding: 12px 18px; gap: 8px; box-shadow: none; }
+.calibration.compact.done { border-left-color: var(--pine); }
+.calibration-line { font-family: Fraunces, serif; font-size: 1.35rem; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.calibration-progress { display: flex; align-items: center; gap: 6px; }
+.calibration-progress span { width: 28px; height: 6px; border-radius: 99px; background: rgba(27, 25, 20, 0.12); }
+.calibration-progress span.on { background: var(--pine); }
+.calibration-progress small { margin-left: 8px; color: var(--muted); }
+button.link { background: none; border: none; padding: 0; color: var(--pine); text-decoration: underline; }
+button.link:disabled { opacity: 0.5; }
+
+/* Bands instead of scores, and the two readings */
+.band-word { font-family: Fraunces, serif; font-size: 3rem; line-height: 1; margin: 6px 0 8px; }
+.band-word.faint { color: #c9c0b2; }
+.readings { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 10px; }
+.readings .max-rule { grid-column: 1 / -1; font-size: 0.85rem; color: var(--muted); }
+.reading-side { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: rgba(255, 255, 255, 0.55); }
+.reading-side .eyebrow { margin-bottom: 2px; }
+.side-band { font-weight: 600; text-transform: capitalize; }
+.reading-side.band-support .side-band, .reading-side.band-crisis .side-band { color: var(--clay); }
+.reading-side.band-check-in .side-band { color: var(--gold); }
+.reading-side.band-calm .side-band { color: var(--pine); }
+.readings.compact { margin: 4px 0 0 auto; max-width: 88%; font-size: 0.8rem; }
+.readings.compact .reading-side { padding: 6px 8px; }
+.readings.compact .max-rule { font-size: 0.75rem; }
+.scores { margin-top: 10px; font-size: 0.8rem; color: var(--muted); }
+.scores summary { cursor: pointer; }
+.disclaimer { margin-top: 12px; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+@media (max-width: 720px) {
+  .readings { grid-template-columns: 1fr; }
+}

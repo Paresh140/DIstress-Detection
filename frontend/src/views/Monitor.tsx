@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { analyzeClip, analyzeUpload, analyzeWords, clipUrl, getSamples } from "../api";
+import { Calibration } from "../components/Calibration";
+import { Readings } from "../components/Readings";
 import type { Analysis, Sample } from "../types";
 import { encodeWav } from "../voice";
 
 const MAX_RECORD_SECONDS = 8;
+
+const BAND_MEANING: Record<string, string> = {
+  calm: "Nothing in the voice or the words suggests distress.",
+  "check-in": "Something might be off, so the assistant asks one gentle question.",
+  support: "This sounds hard, so the assistant offers to listen.",
+  crisis: "The words describe a crisis. The assistant points to people who can help now.",
+};
 
 function formatClock(seconds: number): string {
   const whole = Math.max(0, Math.floor(seconds));
@@ -233,6 +242,8 @@ export function Monitor({
         </p>
       </header>
 
+      <Calibration />
+
       <div className="stage">
         <div
           className="drop"
@@ -292,7 +303,7 @@ export function Monitor({
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
-                void run(() => analyzeUpload(file), URL.createObjectURL(file));
+                void run(() => analyzeUpload(file, transcript.trim()), URL.createObjectURL(file));
               }}
             />
           </label>
@@ -316,54 +327,43 @@ export function Monitor({
         <div className={`reading ${analysis?.label ?? "empty"}`}>
           {analysis ? (
             <>
-              <p className="fine">{analysis.judge ? "Judge" : analysis.file}</p>
-              <p className="score">{analysis.probability.toFixed(2)}</p>
-              <p className="verdict">{analysis.band ?? analysis.label}</p>
-              {analysis.voice?.probability != null || analysis.language?.probability != null ? (
-                <ul className="signals">
-                  {analysis.voice?.probability != null ? (
-                    <li>
-                      {analysis.voice.model?.includes("wavlm") ? "WavLM voice" : "Voice network"}{" "}
-                      <b>{analysis.judge?.voice_band ?? analysis.voice.label}</b> {analysis.voice.probability.toFixed(2)}
-                      {analysis.voice.threshold != null ? ` (threshold ${analysis.voice.threshold.toFixed(2)})` : ""}
-                    </li>
-                  ) : null}
-                  {analysis.language?.probability != null ? (
-                    <li>
-                      {analysis.language.source === "language model" ? "Language model" : "Words"}{" "}
-                      <b>{analysis.judge?.words_band ?? analysis.language.label}</b> {analysis.language.probability.toFixed(2)}
-                    </li>
-                  ) : null}
-                  {analysis.judge?.risk && analysis.judge.risk !== "none" ? (
-                    <li>
-                      Crisis screen <b>{analysis.judge.risk}</b>
-                    </li>
-                  ) : null}
-                </ul>
-              ) : null}
-              <p className="fine">{analysis.judge?.reason ?? `Threshold 0.50. Logit ${analysis.logit.toFixed(2)}.`}</p>
+              <p className="eyebrow">Judge</p>
+              <p className="verdict band-word">{analysis.band ?? analysis.label}</p>
+              <p className="fine">{BAND_MEANING[analysis.band ?? ""] ?? ""}</p>
+              <Readings reading={analysis} />
               {analysis.speech_to_text ? (
                 <p className="fine">
                   {analysis.speech_to_text.model} heard: “{analysis.speech_to_text.text || "no words"}”
                 </p>
               ) : null}
-              {analysis.embedding.length ? (
-                <div className="embed" aria-hidden="true">
-                  {analysis.embedding.map((value, index) => (
-                    <span key={index} style={{ height: `${Math.min(100, Math.abs(value) * 80)}%` }} />
-                  ))}
-                </div>
-              ) : null}
+              <details className="scores">
+                <summary>Scores (studio only)</summary>
+                <ul className="signals">
+                  {analysis.voice?.probability != null ? (
+                    <li>
+                      {analysis.voice.model ?? "Voice"}: P(distress) {analysis.voice.probability.toFixed(2)}
+                      {analysis.voice.threshold != null ? `, threshold ${analysis.voice.threshold.toFixed(2)}` : ""}
+                    </li>
+                  ) : null}
+                  {analysis.language?.probability != null ? (
+                    <li>
+                      Words ({analysis.language.source}): {analysis.language.probability.toFixed(2)}
+                    </li>
+                  ) : null}
+                  <li>{analysis.judge?.reason ?? `Threshold 0.50. Logit ${analysis.logit.toFixed(2)}.`}</li>
+                </ul>
+              </details>
+              <p className="disclaimer">This is a research prototype, not a counselor or a diagnosis.</p>
             </>
           ) : (
             <>
               <p className="eyebrow">No clip yet</p>
-              <p className="score faint">0.50</p>
-              <p className="verdict">waiting</p>
+              <p className="verdict band-word faint">waiting</p>
               <p className="fine">
-                At or above the voice threshold is support, just under it is a check-in, and well under it is calm. The
-                words are banded the same way, and the judge keeps the higher band.
+                The voice and the words are each put in a band: calm, check-in or support. The judge keeps the higher
+                band, so neither one can cancel the other.
               </p>
+              <p className="disclaimer">This is a research prototype, not a counselor or a diagnosis.</p>
             </>
           )}
         </div>

@@ -7,6 +7,7 @@ export type Signal = {
   note?: string;
   threshold?: number;
   model?: string;
+  enrolled?: boolean;
   classes?: Record<string, number>;
 };
 
@@ -168,4 +169,4 @@ export type ChatCard =
   | { type: "mood"; question: string }
   | { type: "resources"; items: { name: string; detail: string; href?: string; action?: string }[] };
 
-export type ChatMessage = { role: "user" | "assistant"; text: string; card?: ChatCard | null; spoken?: boolean };
+export type ChatMessage = { role: "user" | "assistant"; text: string; card?: ChatCard | null; spoken?: boolean; reading?: Partial<Analysis> };
