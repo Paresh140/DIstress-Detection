@@ -53,13 +53,23 @@ def phrases(texts: list[str]) -> list[float]:
     return [float(rule_read(text)["probability"]) for text in texts]
 
 
+LLM_INFO: dict = {}
+
+
 def language_model(texts: list[str]) -> list[float] | None:
-    if not llm.available():
+    """The live words reader: the language model, falling back to the phrase list when a call fails (as live)."""
+    kind = llm.available()
+    if not kind:
         return None
+    LLM_INFO.clear()
+    LLM_INFO.update({"backend": kind, "model": llm._openai_model() if kind == "openai" else llm.ollama_model(), "failed_calls": 0})
     out = []
     for i, text in enumerate(texts, start=1):
         scored = _llm_read(text)
-        out.append(float(scored["probability"]) if scored else 0.5)
+        if scored is None:
+            LLM_INFO["failed_calls"] += 1
+            scored = rule_read(text)
+        out.append(float(scored["probability"]))
         if i % 50 == 0:
             print(f"  llm {i}/{len(texts)}")
     return out
@@ -104,6 +114,7 @@ def run(readers: tuple[str, ...] = ("phrases", "llm", "roberta")) -> dict:
             "recall": round(overall["recall"], 4),
             "specificity": round(overall["specificity"], 4),
             "accuracy_by_category": per_category,
+            **({"llm": dict(LLM_INFO)} if name == "llm" else {}),
             "predictions": [{"text": t, "label": int(y), "probability": round(float(p), 4)} for t, y, p in zip(texts, truth, prob)],
         }
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
