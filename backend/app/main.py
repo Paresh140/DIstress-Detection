@@ -13,7 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -22,6 +22,7 @@ from . import llm
 from . import transcribe as stt
 from .audio import file_to_logmel
 from .chat import prompts, respond
+from .enrollment import CALM_SCRIPT, ENROLL_CLIPS, MIN_LIVE_CLIPS, EnrollmentStore
 from .judge import adjudicate
 from .language import read_language
 from .model import DistressNet, architecture_spec
@@ -100,6 +101,41 @@ def _voice_model() -> VoiceModel | None:
     return _voice
 
 
+# Calm enrollment per browser session, on disk so it survives requests and restarts.
+_enrollments = EnrollmentStore(ARTIFACTS / "enrollments")
+
+
+def _calm_stats(session: str) -> dict | None:
+    try:
+        return _enrollments.stats(session) if session else None
+    except ValueError:
+        return None
+
+
+def _enroll_status(session: str) -> dict:
+    wavlm = _voice_model()
+    try:
+        clips = _enrollments.count(session) if session else 0
+    except ValueError:
+        clips = 0
+    available = bool(wavlm is not None and wavlm.enrolled is not None)
+    if wavlm is None:
+        why = "Calibration needs the WavLM voice model (artifacts/voice_head.pt)."
+    elif wavlm.enrolled is None:
+        why = "This voice_head.pt has no calm-enrolled head. Re-run python -m app.voice (Kaggle) to add one."
+    else:
+        why = ""
+    return {
+        "available": available,
+        "clips": clips,
+        "needed": MIN_LIVE_CLIPS,
+        "recommended": ENROLL_CLIPS,
+        "active": available and clips >= MIN_LIVE_CLIPS,
+        "script": list(CALM_SCRIPT),
+        "note": why,
+    }
+
+
 def _report() -> dict | None:
     path = _report_path()
     if not path.exists():
@@ -117,7 +153,7 @@ def _resolve_clip(file_name: str) -> Path:
     return path
 
 
-def _predict(path: Path | None, transcript: str = "") -> dict:
+def _predict(path: Path | None, transcript: str = "", session: str = "") -> dict:
     voice_probability = None
     voice_threshold = 0.5
     voice_extra: dict = {}
@@ -131,10 +167,10 @@ def _predict(path: Path | None, transcript: str = "") -> dict:
         spec = np.round(mel.numpy(), 3).tolist()
         wavlm = _voice_model()
         if wavlm is not None:
-            scored = wavlm.score(str(path))
+            scored = wavlm.score(str(path), _calm_stats(session))
             voice_probability = scored["probability"]
             voice_threshold = scored["threshold"]
-            voice_extra = {key: scored[key] for key in ("model", "classes", "time_weights", "layer_weights") if key in scored}
+            voice_extra = {key: scored[key] for key in ("model", "enrolled", "classes", "time_weights", "layer_weights") if key in scored}
         else:
             if not _weights().exists():
                 raise HTTPException(status_code=409, detail="No voice model is trained yet.")
@@ -464,9 +500,9 @@ def clip_audio(actor: str, name: str):
 
 
 @app.post("/api/analyze/clip")
-def analyze_clip(body: ClipBody):
+def analyze_clip(body: ClipBody, x_session: str = Header("")):
     path = _resolve_clip(body.file)
-    result = _predict(path, body.transcript)
+    result = _predict(path, body.transcript, x_session)
     result["file"] = body.file
     return result
 
@@ -476,8 +512,50 @@ def analyze_words(body: WordsBody):
     return _predict(None, body.transcript)
 
 
+@app.get("/api/enroll")
+def enroll_status(x_session: str = Header("")):
+    return _enroll_status(x_session)
+
+
+@app.post("/api/enroll")
+async def enroll(file: UploadFile = File(...), x_session: str = Header("")):
+    """Add one calm reading for this session. Its WavLM features are stored; the stats are used from the third reading on."""
+    wavlm = _voice_model()
+    status = _enroll_status(x_session)
+    if not status["available"]:
+        raise HTTPException(status_code=409, detail=status["note"])
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="The recording was empty.")
+    if len(data) > 12_000_000:
+        raise HTTPException(status_code=400, detail="Clip is too large.")
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "calm.wav"
+        path.write_bytes(data)
+        try:
+            feats = wavlm.features(str(path))
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=400, detail=f"Could not read that clip. {exc}") from exc
+    try:
+        _enrollments.add(x_session, feats)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Missing or bad session id.") from exc
+    return _enroll_status(x_session)
+
+
+@app.delete("/api/enroll")
+def enroll_reset(x_session: str = Header("")):
+    try:
+        _enrollments.clear(x_session)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Missing or bad session id.") from exc
+    return _enroll_status(x_session)
+
+
 @app.post("/api/analyze/upload")
-async def analyze_upload_file(file: UploadFile = File(...), transcript: str = Form("")):
+async def analyze_upload_file(file: UploadFile = File(...), transcript: str = Form(""), x_session: str = Header("")):
     if not file.filename or not file.filename.lower().endswith(".wav"):
         raise HTTPException(status_code=400, detail="Upload a .wav clip.")
     data = await file.read()
@@ -487,7 +565,7 @@ async def analyze_upload_file(file: UploadFile = File(...), transcript: str = Fo
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     tmp.write_bytes(data)
     try:
-        result = _predict(tmp, transcript)
+        result = _predict(tmp, transcript, x_session)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Could not read that clip. {exc}") from exc
     result["file"] = file.filename
@@ -512,7 +590,7 @@ def _slim(analysis: dict) -> dict:
 
 
 @app.post("/api/chat/voice")
-async def chat_voice(file: UploadFile = File(...), payload: str = Form("{}")):
+async def chat_voice(file: UploadFile = File(...), payload: str = Form("{}"), x_session: str = Header("")):
     """One spoken turn: transcribe it, read the voice again, then answer like /api/chat.
 
     Every turn is scored, so the voice keeps counting after the first clip, and the
@@ -536,7 +614,7 @@ async def chat_voice(file: UploadFile = File(...), payload: str = Form("{}")):
         path = Path(tmp) / "turn.wav"
         path.write_bytes(data)
         try:
-            reading = _predict(path, "")
+            reading = _predict(path, "", x_session)
         except HTTPException:
             raise
         except Exception as exc:  # noqa: BLE001

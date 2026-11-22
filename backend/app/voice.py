@@ -29,6 +29,7 @@ import numpy as np
 import torch
 
 from . import calibration
+from . import enrollment as enroll
 from .corpora import discover
 from .dataset import TEST_ACTORS, TRAIN_ACTORS, VAL_ACTORS
 from .speech_encoder import (
@@ -136,6 +137,9 @@ def train(
         "test_ece": round(cal["ece"], 4),
         "layer_weights": fitted["layer_weights"],
     }
+    enrolled = _train_enrolled(features, train_clips, val_clips, test_clips, head)
+    if enrolled is not None:
+        summary["enrolled"] = enrolled["summary"]
     model: LayerMixHead = fitted["head"]
     out.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
@@ -146,6 +150,7 @@ def train(
             "mean": fitted["scale"].mean,
             "std": fitted["scale"].std,
             "summary": summary,
+            **({"enrolled": enrolled["saved"]} if enrolled is not None else {}),
         },
         out,
     )
@@ -167,6 +172,54 @@ def train(
     return summary
 
 
+def _train_enrolled(features: dict, train_clips: list, val_clips: list, test_clips: list, head: str, k: int = enroll.ENROLL_CLIPS) -> dict | None:
+    """A second head on calm-enrolled features: each speaker z-scored by k of their own calm clips.
+
+    The enrollment clips are left out of training, validation and test, so no
+    clip is both a reference and a scored example. This is the head the studio
+    uses once a person has recorded their calm reading.
+    """
+    clips = train_clips + val_clips + test_clips
+    chosen = enroll.pick_enrollment(clips, k)
+    if not chosen:
+        return None
+    shifted = enroll.enrolled_features(features, clips, chosen)
+    tr, va, te = (enroll.scorable(group, chosen) for group in (train_clips, val_clips, test_clips))
+
+    def stack(group: list) -> np.ndarray:
+        return np.stack([shifted[str(c.path)] for c in group])
+
+    fitted = fit_head(stack(tr), targets(tr, head), stack(va), targets(va, head), head=head)
+    test_y = np.array([c.label for c in te])
+    scored = calibration.evaluate(predict_logits(fitted, stack(va)), targets(va, head), predict_logits(fitted, stack(te)), test_y)
+    cal = scored["calibrated"]
+    summary = {
+        "enroll_clips": k,
+        "normalization": "per speaker z-score over k calm/neutral clips (layers x channels), enrollment clips excluded from every split",
+        "train_clips": len(tr),
+        "val_clips": len(va),
+        "test_clips": len(te),
+        "selected_epoch": fitted["epoch"],
+        "temperature": scored["temperature"],
+        "threshold": scored["threshold"],
+        "test_balanced_accuracy": round(cal["balanced_accuracy"], 4),
+        "test_auroc": round(cal["auroc"], 4) if cal.get("auroc") is not None else None,
+        "test_specificity": round(cal["specificity"], 4),
+        "test_ece": round(cal["ece"], 4),
+    }
+    print("enrolled head:", json.dumps(summary))
+    model: LayerMixHead = fitted["head"]
+    saved = {
+        "state": {key: v.cpu() for key, v in model.state_dict().items()},
+        "mean": fitted["scale"].mean,
+        "std": fitted["scale"].std,
+        "temperature": float(scored["temperature"]),
+        "threshold": float(scored["threshold"]),
+        "enroll_clips": k,
+    }
+    return {"summary": summary, "saved": saved}
+
+
 class VoiceModel:
     """Loads the encoder and the saved head once and scores one clip at a time."""
 
@@ -180,29 +233,55 @@ class VoiceModel:
         self.head.to(self.dev).eval()
         self.scale = Standardizer.__new__(Standardizer)
         self.scale.mean, self.scale.std = saved["mean"], saved["std"]
+        self.enrolled = None
+        if "enrolled" in saved:
+            e = saved["enrolled"]
+            enrolled_head = LayerMixHead(saved["n_layers"], saved["dim"], classes=spec["classes"], pool=spec["pool"])
+            enrolled_head.load_state_dict(e["state"])
+            enrolled_head.to(self.dev).eval()
+            enrolled_scale = Standardizer.__new__(Standardizer)
+            enrolled_scale.mean, enrolled_scale.std = e["mean"], e["std"]
+            self.enrolled = {"head": enrolled_head, "scale": enrolled_scale, "temperature": float(e["temperature"]), "threshold": float(e["threshold"])}
         self.extractor, self.encoder = load_encoder(self.summary["encoder"])
         self.encoder.to(self.dev).eval()
         self.mtime = path.stat().st_mtime
 
     @torch.no_grad()
-    def score(self, path: str) -> dict:
-        feats = pooled_layers(load_16k(path), self.extractor, self.encoder, self.dev)[None]
-        x = self.scale(feats, self.dev)
-        logits = self.head(x)
-        temperature = float(self.summary["temperature"])
+    def features(self, path: str) -> np.ndarray:
+        """Binned WavLM layer features of one clip, [layers, BINS, dim]."""
+        return pooled_layers(load_16k(path), self.extractor, self.encoder, self.dev)
+
+    @torch.no_grad()
+    def score(self, path: str, calm: dict | None = None) -> dict:
+        """P(distress) for one clip. With calm stats and an enrolled head, the clip is z-scored against the person's calm reading first."""
+        return self.score_features(self.features(path), calm)
+
+    @torch.no_grad()
+    def score_features(self, feats: np.ndarray, calm: dict | None = None) -> dict:
+        use_enrolled = calm is not None and self.enrolled is not None
+        if use_enrolled:
+            head, scale = self.enrolled["head"], self.enrolled["scale"]
+            temperature, threshold = self.enrolled["temperature"], self.enrolled["threshold"]
+            feats = enroll.apply(feats, calm)
+        else:
+            head, scale = self.head, self.scale
+            temperature, threshold = float(self.summary["temperature"]), float(self.summary["threshold"])
+        x = scale(feats[None], self.dev)
+        logits = head(x)
         probability = float(calibration.distress_probability(logits.cpu().numpy(), temperature)[0])
         out = {
             "probability": probability,
-            "threshold": float(self.summary["threshold"]),
-            "model": f"{self.summary['encoder']} + {self.summary['head']} head",
+            "threshold": threshold,
+            "enrolled": use_enrolled,
+            "model": f"{self.summary['encoder']} + {self.summary['head']} head" + (" (calm-enrolled)" if use_enrolled else ""),
         }
         if logits.ndim == 2:
             classes = torch.softmax(logits[0] / temperature, dim=0).cpu().tolist()
             out["classes"] = {name: round(p, 4) for name, p in zip(CLASSES, classes)}
-        if self.head.pool == "attentive":
-            mixed = (self.head.layer_weights()[None, :, None, None] * x).sum(dim=1)
-            out["time_weights"] = [round(w, 4) for w in self.head.time_weights(mixed)[0].cpu().tolist()]
-        out["layer_weights"] = [round(float(w), 4) for w in self.head.layer_weights().cpu()]
+        if head.pool == "attentive":
+            mixed = (head.layer_weights()[None, :, None, None] * x).sum(dim=1)
+            out["time_weights"] = [round(w, 4) for w in head.time_weights(mixed)[0].cpu().tolist()]
+        out["layer_weights"] = [round(float(w), 4) for w in head.layer_weights().cpu()]
         return out
 
 

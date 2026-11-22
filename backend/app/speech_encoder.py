@@ -200,6 +200,7 @@ def fit_head(
     epochs: int = HEAD_EPOCHS,
     head: str = DEFAULT_HEAD,
     on_epoch: Callable[[dict, LayerMixHead, Standardizer], None] | None = None,
+    seed: int = SEED,
 ) -> dict:
     """Train the head on binned features. The epoch is chosen on the validation speakers.
 
@@ -207,9 +208,9 @@ def fit_head(
     0/1 labels for a binary one. Selection uses the binary distress decision
     (P(distress) >= 0.5) so every head is chosen the same way.
     """
-    random.seed(SEED)
-    np.random.seed(SEED)
-    torch.manual_seed(SEED)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
     spec = HEADS[head]
     dev = device()
     scale = Standardizer(train_x)
